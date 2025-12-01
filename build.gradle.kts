@@ -28,6 +28,8 @@ dependencies {
     implementation(libs.bundles.ktor.client)
     implementation(libs.bundles.ktor.common)
     implementation(libs.bundles.kodein)
+
+    implementation("com.anthropic:anthropic-java:2.10.0")
 }
 
 tasks.test {
