@@ -1,2 +1,1 @@
 rootProject.name = "ai-challenge-5"
-

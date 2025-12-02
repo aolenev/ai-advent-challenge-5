@@ -1,0 +1,22 @@
+{
+  "name": "short_response",
+  "description": "Get the short reply for user request",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "currentDateTime": {
+        "type": "string",
+        "description": "Current date and time in Moscow timezone"
+      },
+      "response": {
+        "type": "string",
+        "description": "Response for user prompt"
+      },
+      "correlationId": {
+        "type": "string",
+        "description": "Unique id of request"
+      }
+    },
+    "required": ["currentDateTime", "response", "correlationId"]
+  }
+}
