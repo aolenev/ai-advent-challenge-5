@@ -49,7 +49,7 @@ val baseModule = DI.Module("base") {
 }
 
 val serviceModule = DI.Module("service") {
-    bind<ClaudeClient>() with singleton { ClaudeClient() }
+    bind<ClaudeService>() with singleton { ClaudeService() }
 }
 
 val context =

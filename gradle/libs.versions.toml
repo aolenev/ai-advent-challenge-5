@@ -5,15 +5,8 @@ kodein = "7.22.0"
 kotest = "2.0.2"
 logback = "1.5.6"
 logstash = "6.2"
-prometheus = "1.10.5"
-exposed = "0.58.0"
 jackson = "2.17.1"
-jupyter = "5.10.3"
-flyway = "11.1.0"
 caffeine = "3.1.3"
-thymeleaf = "3.1.3.RELEASE"
-icu = "77.1"
-openhtmltopdf = "1.0.10"
 
 [libraries]
 ktor-server-core-jvm = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
@@ -43,24 +36,10 @@ ktor-jackson = { module = "io.ktor:ktor-jackson", version.strictly = "1.6.8" }
 kodein-di-jvm = { module = "org.kodein.di:kodein-di-jvm", version.ref = "kodein" }
 kodein-di-framework-ktor-server-jvm = { module = "org.kodein.di:kodein-di-framework-ktor-server-jvm", version.ref = "kodein" }
 
-exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
-exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
-exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
-exposed-json = { module = "org.jetbrains.exposed:exposed-json", version.ref = "exposed" }
-
-exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
-
 jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.strictly = "2.14.2" }
 jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version.strictly = "2.14.2" }
-
-typesafe-config = { module = "com.typesafe:config", version.require = "1.4.3" }
-
-hikaru-cp = { module = "com.zaxxer:HikariCP", version.strictly = "5.0.1" }
-postgresql = { module = "org.postgresql:postgresql", version.strictly = "42.7.2" }
-flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
-flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 logback-logstash = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash" }
@@ -74,16 +53,10 @@ ktor-client-apache-jvm = { module = "io.ktor:ktor-client-apache-jvm", version.re
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 
 caffeine-cache = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
-thymeleaf = { module = "org.thymeleaf:thymeleaf", version.ref = "thymeleaf" }
-openhtmltopdf-core = { module = "com.openhtmltopdf:openhtmltopdf-core", version.ref = "openhtmltopdf" }
-openhtmltopdf-pdfbox = { module = "com.openhtmltopdf:openhtmltopdf-pdfbox", version.ref = "openhtmltopdf" }
-icu = { module = "com.ibm.icu:icu4j", version.ref = "icu" }
 
 ## test deps
 kotest-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.strictly = "1.18.0" }
-
-jsonwebtoken = { module = "io.jsonwebtoken:jjwt", version.strictly = "0.12.6" }
 
 [bundles]
 ktor-server = [
@@ -129,24 +102,6 @@ jackson = [
     "jackson-datatype-jsr310",
     "jackson-datatype-jdk8"]
 
-exposed = [
-    "exposed-core",
-    "exposed-dao",
-    "exposed-jdbc",
-    "exposed-json",
-    "exposed-kotlin-datetime"]
-
-logback = [
-    "logback",
-    "logback-logstash"]
-
-template-engine = [
-    "thymeleaf",
-    "icu",
-    "openhtmltopdf-core",
-    "openhtmltopdf-pdfbox"]
-
 [plugins]
-flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlin-jvm = {id = "org.jetbrains.kotlin.jvm", version.ref="kotlin"}
