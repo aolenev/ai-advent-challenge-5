@@ -19,7 +19,7 @@ data class ChatPrompt(
     val systemPrompt: String?
 )
 
-data class ChatResponse(
+data class FiniteChatResponse(
     val response: String,
     val isChatFinished: Boolean
 )

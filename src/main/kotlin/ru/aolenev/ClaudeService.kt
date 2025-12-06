@@ -2,6 +2,7 @@ package ru.aolenev
 
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.models.messages.MessageCreateParams
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.benmanes.caffeine.cache.Cache
@@ -60,7 +61,57 @@ class ClaudeService {
         }
     }
 
-    suspend fun chat(chatId: String, aiRole: String?, userPrompt: String): ChatResponse? {
+    suspend fun unstructuredChat(chatId: String, aiRole: String?, userPrompt: String): String? {
+        if (aiRole.isNullOrEmpty()) throw BadRequestException(message = "You didn't provide an AI role")
+        try {
+            val existingChat = chatCache.getIfPresent(chatId)
+            val currentChat = if (existingChat == null) { // это первое сообщение в чате
+                val chat = Chat(
+                    id = chatId,
+                    aiRole = aiRole,
+                    messages = listOf(ClaudeMessage(role = "user", content = userPrompt)),
+                    isFinished = false
+                )
+                chatCache.put(chatId, chat)
+                chat
+            } else { // Сообщения в чате уже были, просто добавляем ещё одно сообщение в хвост
+                existingChat.copy(
+                    aiRole = aiRole,
+                    messages = existingChat.messages + ClaudeMessage(
+                        role = "user",
+                        content = userPrompt
+                    )
+                )
+            }
+
+            val response = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = currentChat.messages,
+                    system = currentChat.aiRole
+                )
+            ).body<ClaudeSimpleResponse>()
+
+            val responseMessage = response.content.first().content
+
+            chatCache.put(
+                chatId,
+                currentChat.copy(
+                    messages = currentChat.messages + ClaudeMessage(
+                        role = "assistant",
+                        content = responseMessage
+                    )
+                )
+            )
+
+            return responseMessage
+        } catch (e: Exception) {
+            log.error("ERROR:", e)
+            return null
+        }
+    }
+
+    suspend fun chatStructuredByTool(chatId: String, aiRole: String?, userPrompt: String): FiniteChatResponse? {
         try {
             val existingChat = chatCache.getIfPresent(chatId)
             val currentChat = if (existingChat == null) { // это первое сообщение в чате
@@ -76,7 +127,7 @@ class ClaudeService {
                 chatCache.put(chatId, chat)
                 chat
             } else if (existingChat.isFinished) {
-                return ChatResponse(
+                return FiniteChatResponse(
                     response = "Your conversation is finished, last response is: ${(existingChat.messages.last().content as List<ClaudeMultiQuestionsContent>).first().input.response}",
                     isChatFinished = true
                 )
@@ -120,7 +171,7 @@ class ClaudeService {
                 )
             )
 
-            return ChatResponse(response = tooledResponse.input.response, isChatFinished = tooledResponse.input.isFinished)
+            return FiniteChatResponse(response = tooledResponse.input.response, isChatFinished = tooledResponse.input.isFinished)
         } catch (e: Exception) {
             log.error("ERROR:", e)
             return null
@@ -145,11 +196,12 @@ class ClaudeService {
 
 data class Chat(val id: String, val aiRole: String, val messages: List<ClaudeMessage>, val isFinished: Boolean)
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class ClaudeRawRequest(
     @JsonProperty("model") val model: String,
     @JsonProperty("max_tokens") val maxTokens: Int? = 2048,
     @JsonProperty("system") val system: String?,
-    @JsonProperty("tools") val tools: List<Any>,
+    @JsonProperty("tools") val tools: List<Any>? = null,
     @JsonProperty("messages") val messages: List<ClaudeMessage>
 )
 
@@ -162,6 +214,15 @@ data class TooledContent(
     @JsonProperty("type") val type: String = "tool_result",
     @JsonProperty("tool_use_id") val toolId: String,
     @JsonProperty("content") val content: String
+)
+
+private data class ClaudeSimpleResponse(
+    @JsonProperty("content") val content: List<ClaudeTextContent>,
+)
+
+private data class ClaudeTextContent(
+    @JsonProperty("type") val type: String,
+    @JsonProperty("text") val content: String
 )
 
 private data class ClaudeSinglePromptStructuredResponse(
