@@ -23,7 +23,11 @@ fun Application.module() {
 
 private fun Routing.routes() {
     post("/prompt") { req: SimplePrompt ->
-        val response = claude.singlePrompt(req.prompt)
+        val response = claude.singlePrompt(
+            prompt = req.prompt,
+            systemPrompt = req.systemPrompt,
+            temperature = req.temperature
+        )
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to AI"))

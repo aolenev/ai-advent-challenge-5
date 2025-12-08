@@ -15,6 +15,7 @@ import io.ktor.http.*
 import io.ktor.server.plugins.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
+import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 
@@ -33,12 +34,16 @@ class ClaudeService {
         .getResource("/tool-templates/multi-questions.json")!!
         .readText()
 
-    fun singlePrompt(prompt: String): String? {
-        val params = MessageCreateParams.builder()
+    fun singlePrompt(prompt: String, systemPrompt: String?, temperature: BigDecimal?): String? {
+        val builder = MessageCreateParams.builder()
             .model(sonnet45)
             .maxTokens(1000)
             .addUserMessage(prompt)
-            .build()
+
+        systemPrompt?.let { builder.system(it) }
+        temperature?.let { builder.temperature(it.toDouble()) }
+
+        val params = builder.build()
 
         return sdkClient.messages().create(params).content().first().text().map { it.text() }.getOrNull()
     }
@@ -200,6 +205,7 @@ data class Chat(val id: String, val aiRole: String, val messages: List<ClaudeMes
 data class ClaudeRawRequest(
     @JsonProperty("model") val model: String,
     @JsonProperty("max_tokens") val maxTokens: Int? = 2048,
+    @JsonProperty("temperature") val temperature: BigDecimal? = null,
     @JsonProperty("system") val system: String?,
     @JsonProperty("tools") val tools: List<Any>? = null,
     @JsonProperty("messages") val messages: List<ClaudeMessage>

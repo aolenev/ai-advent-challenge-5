@@ -1,6 +1,12 @@
 package ru.aolenev
 
-data class SimplePrompt(val prompt: String)
+import java.math.BigDecimal
+
+data class SimplePrompt(
+    val prompt: String,
+    val systemPrompt: String? = null,
+    val temperature: BigDecimal? = null
+)
 
 data class StructuredResponse(
     val currentDateTime: String,
