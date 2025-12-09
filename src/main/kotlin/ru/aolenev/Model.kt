@@ -2,10 +2,12 @@ package ru.aolenev
 
 import java.math.BigDecimal
 
-data class SimplePrompt(
+data class SinglePrompt(
     val prompt: String,
     val systemPrompt: String? = null,
-    val temperature: BigDecimal? = null
+    val temperature: BigDecimal? = null,
+    val gptService: String? = "claude",
+    val model: String? = null
 )
 
 data class StructuredResponse(

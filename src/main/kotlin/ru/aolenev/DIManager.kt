@@ -13,6 +13,10 @@ import io.ktor.serialization.jackson.*
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.singleton
+import ru.aolenev.services.ClaudeService
+import ru.aolenev.services.GptService
+import ru.aolenev.services.OpenAIService
+import ru.aolenev.services.YandexGptService
 
 val baseModule = DI.Module("base") {
     bind<ObjectMapper>() with singleton {
@@ -50,6 +54,8 @@ val baseModule = DI.Module("base") {
 
 val serviceModule = DI.Module("service") {
     bind<ClaudeService>() with singleton { ClaudeService() }
+    bind<GptService>(tag = "yandex") with singleton { YandexGptService() }
+    bind<GptService>(tag = "openai") with singleton { OpenAIService() }
 }
 
 val context =

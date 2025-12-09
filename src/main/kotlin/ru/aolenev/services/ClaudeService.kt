@@ -1,7 +1,5 @@
-package ru.aolenev
+package ru.aolenev.services
 
-import com.anthropic.client.okhttp.AnthropicOkHttpClient
-import com.anthropic.models.messages.MessageCreateParams
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -15,17 +13,16 @@ import io.ktor.http.*
 import io.ktor.server.plugins.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
+import ru.aolenev.*
 import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
-import kotlin.jvm.optionals.getOrNull
 
-class ClaudeService {
+class ClaudeService : GptService {
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
 
     private val httpClient: HttpClient by context.instance()
     private val mapper: ObjectMapper by context.instance()
 
-    private val sdkClient = AnthropicOkHttpClient.fromEnv()
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
         .getResource("/tool-templates/single-prompt-struct-response.json")!!
@@ -34,18 +31,17 @@ class ClaudeService {
         .getResource("/tool-templates/multi-questions.json")!!
         .readText()
 
-    fun singlePrompt(prompt: String, systemPrompt: String?, temperature: BigDecimal?): String? {
-        val builder = MessageCreateParams.builder()
-            .model(sonnet45)
-            .maxTokens(1000)
-            .addUserMessage(prompt)
+    override suspend fun singlePrompt(req: SinglePrompt): String? {
+        val response = requestClaude(
+            req = ClaudeRawRequest(
+                model = sonnet45,
+                messages = listOf(ClaudeMessage(role = "user", content = req.prompt)),
+                system = req.systemPrompt,
+                temperature = req.temperature,
+            )
+        ).body<ClaudeSimpleResponse>()
 
-        systemPrompt?.let { builder.system(it) }
-        temperature?.let { builder.temperature(it.toDouble()) }
-
-        val params = builder.build()
-
-        return sdkClient.messages().create(params).content().first().text().map { it.text() }.getOrNull()
+        return response.content.firstOrNull()?.content
     }
 
     suspend fun singlePromptWithStructuredResponse(prompt: String): StructuredResponse? {
@@ -144,10 +140,12 @@ class ClaudeService {
                 existingChat.copy(
                     messages = existingChat.messages + ClaudeMessage(
                         role = "user",
-                        content = listOf(TooledContent(
+                        content = listOf(
+                            TooledContent(
                             toolId = toolId,
                             content = userPrompt
-                        ))
+                        )
+                        )
                     )
                 )
             }
