@@ -7,6 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
+import ru.aolenev.ResponseWithUsageDetails
 import ru.aolenev.SinglePrompt
 import ru.aolenev.context
 
@@ -15,7 +16,7 @@ class YandexGptService : GptService {
 
     private val httpClient: HttpClient by context.instance()
 
-    override suspend fun singlePrompt(req: SinglePrompt): String? {
+    override suspend fun singlePrompt(req: SinglePrompt): ResponseWithUsageDetails? {
         return try {
             val apiKey = System.getenv("YANDEX_API_KEY")
                 ?: throw IllegalStateException("YANDEX_API_KEY environment variable is not set")
@@ -49,7 +50,13 @@ class YandexGptService : GptService {
                 setBody(yandexRequest)
             }.body<YandexGptResponse>()
 
-            response.result.alternatives.firstOrNull()?.message?.text
+            return ResponseWithUsageDetails(
+                response = response.result.alternatives.first().message.text,
+                inputTokens = response.result.usage.inputTextTokens,
+                outputTokens = response.result.usage.completionTokens,
+                stopReason = "unknown"
+            )
+
         } catch (e: Exception) {
             log.error("Error calling YandexGPT API", e)
             null
@@ -90,7 +97,7 @@ data class YandexAlternative(
 )
 
 data class YandexUsage(
-    @JsonProperty("inputTextTokens") val inputTextTokens: String,
-    @JsonProperty("completionTokens") val completionTokens: String,
-    @JsonProperty("totalTokens") val totalTokens: String
+    @JsonProperty("inputTextTokens") val inputTextTokens: Int,
+    @JsonProperty("completionTokens") val completionTokens: Int,
+    @JsonProperty("totalTokens") val totalTokens: Int
 )

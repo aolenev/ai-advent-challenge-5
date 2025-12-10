@@ -31,17 +31,23 @@ class ClaudeService : GptService {
         .getResource("/tool-templates/multi-questions.json")!!
         .readText()
 
-    override suspend fun singlePrompt(req: SinglePrompt): String? {
+    override suspend fun singlePrompt(req: SinglePrompt): ResponseWithUsageDetails {
         val response = requestClaude(
             req = ClaudeRawRequest(
                 model = sonnet45,
                 messages = listOf(ClaudeMessage(role = "user", content = req.prompt)),
                 system = req.systemPrompt,
                 temperature = req.temperature,
+                maxTokens = req.maxTokens
             )
         ).body<ClaudeSimpleResponse>()
 
-        return response.content.firstOrNull()?.content
+        return ResponseWithUsageDetails(
+            response = response.content.first().content,
+            inputTokens = response.usage.inputTokens,
+            outputTokens = response.usage.outputTokens,
+            stopReason = response.stopReason
+        )
     }
 
     suspend fun singlePromptWithStructuredResponse(prompt: String): StructuredResponse? {
@@ -222,6 +228,13 @@ data class TooledContent(
 
 private data class ClaudeSimpleResponse(
     @JsonProperty("content") val content: List<ClaudeTextContent>,
+    @JsonProperty("usage") val usage: ClaudeUsage,
+    @JsonProperty("stop_reason") val stopReason: String
+)
+
+private data class ClaudeUsage(
+    @JsonProperty("input_tokens") val inputTokens: Int,
+    @JsonProperty("output_tokens") val outputTokens: Int
 )
 
 private data class ClaudeTextContent(

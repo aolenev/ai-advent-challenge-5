@@ -8,6 +8,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
+import ru.aolenev.ResponseWithUsageDetails
 import ru.aolenev.SinglePrompt
 import ru.aolenev.context
 
@@ -16,7 +17,7 @@ class OpenAIService : GptService {
 
     private val httpClient: HttpClient by context.instance()
 
-    override suspend fun singlePrompt(req: SinglePrompt): String? {
+    override suspend fun singlePrompt(req: SinglePrompt): ResponseWithUsageDetails? {
         return try {
             val apiKey = System.getenv("OPEN_ROUTER_API_KEY")
                 ?: throw IllegalStateException("OPEN_ROUTER_API_KEY environment variable is not set")
@@ -33,7 +34,7 @@ class OpenAIService : GptService {
                 model = req.model ?: "amazon/nova-2-lite-v1:free",
                 messages = messages,
                 temperature = req.temperature?.toDouble(),
-                maxTokens = 1000
+                maxTokens = req.maxTokens
             )
 
             val response = httpClient.post("https://openrouter.ai/api/v1/chat/completions") {
@@ -44,7 +45,12 @@ class OpenAIService : GptService {
                 setBody(openAIRequest)
             }.body<OpenAIResponse>()
 
-            response.choices.firstOrNull()?.message?.content
+            return ResponseWithUsageDetails(
+                response = response.choices.first().message.content,
+                inputTokens = response.usage.promptTokens,
+                outputTokens = response.usage.completionTokens,
+                stopReason = response.choices.first().finishReason
+            )
         } catch (e: Exception) {
             log.error("Error calling OpenAI API", e)
             null

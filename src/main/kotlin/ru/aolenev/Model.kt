@@ -7,7 +7,15 @@ data class SinglePrompt(
     val systemPrompt: String? = null,
     val temperature: BigDecimal? = null,
     val gptService: String? = "claude",
-    val model: String? = null
+    val model: String? = null,
+    val maxTokens: Int = 1000
+)
+
+data class ResponseWithUsageDetails(
+    val response: String,
+    val inputTokens: Int,
+    val outputTokens: Int,
+    val stopReason: String
 )
 
 data class StructuredResponse(
