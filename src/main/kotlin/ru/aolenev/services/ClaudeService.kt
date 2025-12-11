@@ -31,6 +31,9 @@ class ClaudeService : GptService {
         .getResource("/tool-templates/multi-questions.json")!!
         .readText()
 
+    private val autoSummaryThreshold = 8
+    private val summaryPrompt = "Please make a summary of our dialog split by keywords 'user' and 'assistant', so I could use this summary to continue dialog"
+
     override suspend fun singlePrompt(req: SinglePrompt): ResponseWithUsageDetails {
         val response = requestClaude(
             req = ClaudeRawRequest(
@@ -68,7 +71,25 @@ class ClaudeService : GptService {
         }
     }
 
-    suspend fun unstructuredChat(chatId: String, aiRole: String?, userPrompt: String): String? {
+    private suspend fun performAutoSummaryIfNeeded(chat: Chat): List<ClaudeMessage> {
+        return if (chat.messages.size >= autoSummaryThreshold) {
+            val response = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = chat.messages + ClaudeMessage(
+                        role = "user",
+                        content = summaryPrompt
+                    ),
+                    system = chat.aiRole
+                )
+            ).body<ClaudeSimpleResponse>()
+
+            val responseMessage = response.content.first().content
+            listOf(ClaudeMessage(role = "user", content = responseMessage))
+        } else chat.messages
+    }
+
+    suspend fun unstructuredChatWithAutoSummary(chatId: String, aiRole: String?, userPrompt: String): ResponseWithHistory? {
         if (aiRole.isNullOrEmpty()) throw BadRequestException(message = "You didn't provide an AI role")
         try {
             val existingChat = chatCache.getIfPresent(chatId)
@@ -81,10 +102,13 @@ class ClaudeService : GptService {
                 )
                 chatCache.put(chatId, chat)
                 chat
-            } else { // Сообщения в чате уже были, просто добавляем ещё одно сообщение в хвост
+            } else { // Сообщения в чате уже были, делаем автосуммирование истории, если требуется, а потом добавляем ещё одно сообщение в хвост
+
+                val compressedMessages = performAutoSummaryIfNeeded(existingChat)
+
                 existingChat.copy(
                     aiRole = aiRole,
-                    messages = existingChat.messages + ClaudeMessage(
+                    messages = compressedMessages + ClaudeMessage(
                         role = "user",
                         content = userPrompt
                     )
@@ -111,7 +135,11 @@ class ClaudeService : GptService {
                 )
             )
 
-            return responseMessage
+            return ResponseWithHistory(
+                response = responseMessage,
+                messageHistory = chatCache.getIfPresent(chatId)!!.messages.map { mapOf(it.role to it.content.toString()) },
+                usage = response.usage.toTokenUsage()
+            )
         } catch (e: Exception) {
             log.error("ERROR:", e)
             return null
@@ -231,6 +259,8 @@ private data class ClaudeSimpleResponse(
     @JsonProperty("usage") val usage: ClaudeUsage,
     @JsonProperty("stop_reason") val stopReason: String
 )
+
+private fun ClaudeUsage.toTokenUsage(): TokenUsage = TokenUsage(inputTokens = this.inputTokens, outputTokens = this.outputTokens)
 
 private data class ClaudeUsage(
     @JsonProperty("input_tokens") val inputTokens: Int,

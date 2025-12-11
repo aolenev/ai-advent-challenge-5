@@ -40,9 +40,9 @@ val baseModule = DI.Module("base") {
             }
 
             install(HttpTimeout) {
-                this.requestTimeoutMillis = 35000
-                this.connectTimeoutMillis = 35000
-                this.socketTimeoutMillis = 35000
+                this.requestTimeoutMillis = 60000
+                this.connectTimeoutMillis = 60000
+                this.socketTimeoutMillis = 60000
             }
 
             defaultRequest {

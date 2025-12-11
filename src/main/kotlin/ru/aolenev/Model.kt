@@ -29,6 +29,17 @@ data class ResponseWithFinishFlag(
     val isFinished: Boolean
 )
 
+data class ResponseWithHistory(
+    val response: String,
+    val usage: TokenUsage,
+    val messageHistory: List<Map<String, String>>
+)
+
+data class TokenUsage(
+    val inputTokens: Int,
+    val outputTokens: Int
+)
+
 data class ChatPrompt(
     val chatId: String,
     val prompt: String,
