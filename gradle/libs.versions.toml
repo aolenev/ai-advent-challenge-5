@@ -7,6 +7,8 @@ logback = "1.5.6"
 logstash = "6.2"
 jackson = "2.17.1"
 caffeine = "3.1.3"
+flyway = "11.1.0"
+exposed = "0.58.0"
 
 [libraries]
 ktor-server-core-jvm = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
@@ -53,6 +55,19 @@ ktor-client-apache-jvm = { module = "io.ktor:ktor-client-apache-jvm", version.re
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 
 caffeine-cache = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+
+typesafe-config = { module = "com.typesafe:config", version.require = "1.4.3" }
+
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-json = { module = "org.jetbrains.exposed:exposed-json", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+
+hikari-cp = { module = "com.zaxxer:HikariCP", version.strictly = "5.0.1" }
+postgresql = { module = "org.postgresql:postgresql", version.strictly = "42.7.2" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 ## test deps
 kotest-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest" }
@@ -102,6 +117,15 @@ jackson = [
     "jackson-datatype-jsr310",
     "jackson-datatype-jdk8"]
 
+exposed = [
+    "exposed-core",
+    "exposed-dao",
+    "exposed-jdbc",
+    "exposed-json",
+    "exposed-kotlin-datetime"]
+
+
 [plugins]
+flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 kotlin-jvm = {id = "org.jetbrains.kotlin.jvm", version.ref="kotlin"}

@@ -3,8 +3,8 @@ package ru.aolenev.services
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.LoadingCache
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -14,6 +14,8 @@ import io.ktor.server.plugins.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.*
+import ru.aolenev.repo.ChatTable
+import ru.aolenev.repo.MessageTable
 import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
 
@@ -85,6 +87,10 @@ class ClaudeService : GptService {
             ).body<ClaudeSimpleResponse>()
 
             val responseMessage = response.content.first().content
+            MessageTable.saveMessage(chatId = chat.id, messageContent = responseMessage, messageType = MessageType.SUMMARY)
+            // чистим кэш чата от старых сообщений до суммаризации
+            chatCache.invalidate(chat.id)
+
             listOf(ClaudeMessage(role = "user", content = responseMessage))
         } else chat.messages
     }
@@ -92,7 +98,7 @@ class ClaudeService : GptService {
     suspend fun unstructuredChatWithAutoSummary(chatId: String, aiRole: String?, userPrompt: String): ResponseWithHistory? {
         if (aiRole.isNullOrEmpty()) throw BadRequestException(message = "You didn't provide an AI role")
         try {
-            val existingChat = chatCache.getIfPresent(chatId)
+            val existingChat = chatCache.get(chatId)
             val currentChat = if (existingChat == null) { // это первое сообщение в чате
                 val chat = Chat(
                     id = chatId,
@@ -101,10 +107,13 @@ class ClaudeService : GptService {
                     isFinished = false
                 )
                 chatCache.put(chatId, chat)
+                ChatTable.addChat(chatId = chatId, aiRole = aiRole)
+                MessageTable.saveMessage(messageContent = userPrompt, chatId = chatId, messageType = MessageType.USER)
                 chat
             } else { // Сообщения в чате уже были, делаем автосуммирование истории, если требуется, а потом добавляем ещё одно сообщение в хвост
 
                 val compressedMessages = performAutoSummaryIfNeeded(existingChat)
+                MessageTable.saveMessage(chatId = chatId, messageContent = userPrompt, messageType = MessageType.USER)
 
                 existingChat.copy(
                     aiRole = aiRole,
@@ -124,6 +133,7 @@ class ClaudeService : GptService {
             ).body<ClaudeSimpleResponse>()
 
             val responseMessage = response.content.first().content
+            MessageTable.saveMessage(messageContent = responseMessage, chatId = chatId, messageType = MessageType.ASSISTANT)
 
             chatCache.put(
                 chatId,
@@ -215,9 +225,19 @@ class ClaudeService : GptService {
         }
     }
 
-    private val chatCache: Cache<String, Chat> = Caffeine.newBuilder()
+    private val chatCache: LoadingCache<String, Chat> = Caffeine.newBuilder()
         .expireAfterWrite(15, TimeUnit.MINUTES)
-        .build()
+        .build { key ->
+            val aiRole = ChatTable.findAiRole(key)
+            if (aiRole != null) {
+                Chat(
+                    id = key,
+                    aiRole = aiRole,
+                    messages = MessageTable.readLastMessages(key).map { ClaudeMessage(role = it.messageType.toClaudeRole(), content = it.messageContent) },
+                    isFinished = false
+                )
+            } else null
+        }
 
     private suspend fun requestClaude(req: ClaudeRawRequest): HttpResponse {
         return httpClient.post("https://api.anthropic.com/v1/messages") {

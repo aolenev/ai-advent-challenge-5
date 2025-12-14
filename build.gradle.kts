@@ -4,6 +4,7 @@ plugins {
     kotlin("plugin.serialization") version "2.0.21"
     alias(libs.plugins.ktor)
     application
+    alias(libs.plugins.flyway)
 }
 
 group = "ru.aolenev"
@@ -23,12 +24,25 @@ kotlin {
     jvmToolchain(21)
 }
 
+flyway {
+    configFiles = arrayOf("src/main/resources/flyway.conf")
+    dependencies {
+        runtimeOnly(libs.flyway.postgres)
+        runtimeOnly(libs.postgresql)
+    }
+}
+
 dependencies {
     implementation(libs.bundles.ktor.server)
     implementation(libs.bundles.ktor.client)
     implementation(libs.bundles.ktor.common)
     implementation(libs.bundles.kodein)
     implementation(libs.caffeine.cache)
+    implementation(libs.bundles.exposed)
+    implementation(libs.typesafe.config)
+    implementation(libs.flyway.postgres)
+    implementation(libs.postgresql)
+    implementation(libs.hikari.cp)
 
     implementation("com.anthropic:anthropic-java:2.10.0")
 }

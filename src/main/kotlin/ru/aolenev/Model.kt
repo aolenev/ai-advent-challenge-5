@@ -1,5 +1,6 @@
 package ru.aolenev
 
+import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
 
 data class SinglePrompt(
@@ -50,3 +51,23 @@ data class FiniteChatResponse(
     val response: String,
     val isChatFinished: Boolean
 )
+
+
+data class Message(
+    val id: Long,
+    val messageContent: String,
+    val chatId: String,
+    val messageType: MessageType,
+    val createdAt: LocalDateTime
+)
+
+enum class MessageType {
+    USER,
+    ASSISTANT,
+    SUMMARY
+}
+
+fun MessageType.toClaudeRole(): String = when (this) {
+    MessageType.USER, MessageType.SUMMARY -> "user"
+    MessageType.ASSISTANT -> "assistant"
+}

@@ -1,5 +1,6 @@
 package ru.aolenev
 
+import dbMigration
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -19,6 +20,7 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    dbMigration()
     routing {
         commonSettings()
         routes()
