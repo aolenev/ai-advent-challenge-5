@@ -10,10 +10,12 @@ import io.ktor.server.routing.*
 import org.kodein.di.instance
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.GptService
+import ru.aolenev.services.McpService
 
 private val claude: ClaudeService by context.instance()
 private val yandex: GptService by context.instance(tag = "yandex")
 private val openai: GptService by context.instance(tag = "openai")
+private val mcpService: McpService by context.instance()
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -62,5 +64,14 @@ private fun Routing.routes() {
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to AI"))
+    }
+
+    post("/mcp/tools") {
+        val mcpSessionId = mcpService.initializeSession()
+        if (mcpSessionId == null) {
+            call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "Failed to initialize MCP session"))
+        } else {
+            call.respond(HttpStatusCode.OK, mcpService.getTools(mcpSessionId)!!)
+        }
     }
 }

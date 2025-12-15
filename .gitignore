@@ -1,14 +1,12 @@
 .gradle
 build/
-!gradle/wrapper/gradle-wrapper.jar
+gradle/wrapper
 !**/src/main/**/build/
 !**/src/test/**/build/
+gradlew*
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+.idea
 *.iws
 *.iml
 *.ipr
@@ -16,27 +14,9 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
 ### Mac OS ###
 .DS_Store
+/.idea/gradle.xml
+
+## Custom
+src/main/resources/test*
