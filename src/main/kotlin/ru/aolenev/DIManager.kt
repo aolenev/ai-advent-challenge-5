@@ -22,6 +22,7 @@ import org.kodein.di.bind
 import org.kodein.di.instance
 import org.kodein.di.singleton
 import ru.aolenev.services.ClaudeService
+import ru.aolenev.services.CronJobService
 import ru.aolenev.services.GptService
 import ru.aolenev.services.McpServer
 import ru.aolenev.services.McpService
@@ -90,6 +91,7 @@ val serviceModule = DI.Module("service") {
     bind<McpService>() with singleton { McpService() }
     bind<McpServer>() with singleton { McpServer() }
     bind<TurboApiService>() with singleton { TurboApiService() }
+    bind<CronJobService>() with singleton { CronJobService() }
 }
 
 val context =
