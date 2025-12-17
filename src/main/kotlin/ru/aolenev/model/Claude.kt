@@ -1,5 +1,6 @@
-package ru.aolenev
+package ru.aolenev.model
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
 
@@ -33,7 +34,7 @@ data class ResponseWithFinishFlag(
 data class ResponseWithHistory(
     val response: String,
     val usage: TokenUsage,
-    val messageHistory: List<Map<String, String>>
+    val messageHistory: List<Map<String, Any>>
 )
 
 data class TokenUsage(
@@ -71,3 +72,15 @@ fun MessageType.toClaudeRole(): String = when (this) {
     MessageType.USER, MessageType.SUMMARY -> "user"
     MessageType.ASSISTANT -> "assistant"
 }
+
+data class ClaudeMcpTool(
+    @JsonProperty("name") val name: String,
+    @JsonProperty("description") val description: String?,
+    @JsonProperty("input_schema") val inputSchema: Any
+)
+
+fun McpTool.toClaude(): ClaudeMcpTool = ClaudeMcpTool(
+    name = name,
+    description = description,
+    inputSchema = inputSchema
+)

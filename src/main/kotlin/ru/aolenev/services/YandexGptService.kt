@@ -7,8 +7,8 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
-import ru.aolenev.ResponseWithUsageDetails
-import ru.aolenev.SinglePrompt
+import ru.aolenev.model.ResponseWithUsageDetails
+import ru.aolenev.model.SinglePrompt
 import ru.aolenev.context
 
 class YandexGptService : GptService {

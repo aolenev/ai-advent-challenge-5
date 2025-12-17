@@ -1,7 +1,5 @@
 package ru.aolenev.services
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.typesafe.config.Config
 import io.ktor.client.*
@@ -11,6 +9,7 @@ import io.ktor.http.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.context
+import ru.aolenev.model.*
 
 class McpService {
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
@@ -90,11 +89,11 @@ class McpService {
         return try {
             log.info("Fetching tools list for session: $mcpSessionId")
 
-            val toolsListRequest = McpToolsListRequest(
+            val toolsListRequest = McpToolsRequest(
                 jsonrpc = "2.0",
                 id = 2,
                 method = "tools/list",
-                params = McpToolsListParams(cursor = null)
+                params = McpToolsParams()
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
@@ -115,8 +114,8 @@ class McpService {
                 return null
             }
 
-            val toolsResponse = mapper.readValue(jsonData, McpToolsListResponse::class.java)
-            log.info("Successfully fetched ${toolsResponse.result.tools.size} tools")
+            val toolsResponse = mapper.readValue(jsonData, McpToolsResponse::class.java)
+            log.info("Successfully fetched ${toolsResponse.result.tools?.size ?: 0} tools")
 
             toolsResponse.result.tools
         } catch (e: Exception) {
@@ -139,67 +138,3 @@ class McpService {
         return dataLines.first().removePrefix("data: ").trim()
     }
 }
-
-private data class McpInitializeRequest(
-    @JsonProperty("jsonrpc") val jsonrpc: String,
-    @JsonProperty("id") val id: Int,
-    @JsonProperty("method") val method: String,
-    @JsonProperty("params") val params: McpInitializeParams
-)
-
-private data class McpInitializeParams(
-    @JsonProperty("protocolVersion") val protocolVersion: String,
-    @JsonProperty("capabilities") val capabilities: McpClientCapabilities,
-    @JsonProperty("clientInfo") val clientInfo: McpClientInfo
-)
-
-private data class McpClientCapabilities(
-    @JsonProperty("roots") val roots: McpRootsCapability,
-    @JsonProperty("sampling") val sampling: Map<String, Any>,
-    @JsonProperty("elicitation") val elicitation: Map<String, Any>
-)
-
-private data class McpRootsCapability(
-    @JsonProperty("listChanged") val listChanged: Boolean
-)
-
-private data class McpClientInfo(
-    @JsonProperty("name") val name: String,
-    @JsonProperty("title") val title: String,
-    @JsonProperty("version") val version: String
-)
-
-private data class McpInitializedNotification(
-    @JsonProperty("jsonrpc") val jsonrpc: String,
-    @JsonProperty("method") val method: String
-)
-
-private data class McpToolsListRequest(
-    @JsonProperty("jsonrpc") val jsonrpc: String,
-    @JsonProperty("id") val id: Int,
-    @JsonProperty("method") val method: String,
-    @JsonProperty("params") val params: McpToolsListParams
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-private data class McpToolsListParams(
-    @JsonProperty("cursor") val cursor: String?
-)
-
-private data class McpToolsListResponse(
-    @JsonProperty("jsonrpc") val jsonrpc: String,
-    @JsonProperty("id") val id: Int,
-    @JsonProperty("result") val result: McpToolsListResult
-)
-
-private data class McpToolsListResult(
-    @JsonProperty("tools") val tools: List<McpTool>,
-    @JsonProperty("nextCursor") val nextCursor: String?
-)
-
-data class McpTool(
-    @JsonProperty("name") val name: String,
-    @JsonProperty("title") val title: String?,
-    @JsonProperty("description") val description: String?,
-    @JsonProperty("inputSchema") val inputSchema: Any
-)

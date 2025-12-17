@@ -1,7 +1,7 @@
 {
   "name": "conversation_response",
   "description": "Provide response for multi-message conversation",
-  "input_schema": {
+  "inputSchema": {
     "type": "object",
     "properties": {
       "isFinished": {

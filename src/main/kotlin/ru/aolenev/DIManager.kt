@@ -23,8 +23,10 @@ import org.kodein.di.instance
 import org.kodein.di.singleton
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.GptService
+import ru.aolenev.services.McpServer
 import ru.aolenev.services.McpService
 import ru.aolenev.services.OpenAIService
+import ru.aolenev.services.TurboApiService
 import ru.aolenev.services.YandexGptService
 import javax.sql.DataSource
 
@@ -86,6 +88,8 @@ val serviceModule = DI.Module("service") {
     bind<GptService>(tag = "yandex") with singleton { YandexGptService() }
     bind<GptService>(tag = "openai") with singleton { OpenAIService() }
     bind<McpService>() with singleton { McpService() }
+    bind<McpServer>() with singleton { McpServer() }
+    bind<TurboApiService>() with singleton { TurboApiService() }
 }
 
 val context =

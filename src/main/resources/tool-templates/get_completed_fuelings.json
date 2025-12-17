@@ -1,0 +1,32 @@
+{
+  "name": "get_completed_fuelings",
+  "description": "Информация об успешных топливных заказах за период",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "from": {
+        "type": "number",
+        "description": "Unix epoch time в миллисекундвх"
+      },
+      "to": {
+        "type": "number",
+        "description": "Дата в миллисекундах"
+      }
+    },
+    "required": ["from"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "count": {
+        "type": "number",
+        "description": "Количество успешно завершённых заказов"
+      },
+      "volume": {
+        "type": "number",
+        "description": "Суммарный объем заказов в литрах"
+      }
+    },
+    "required": ["count", "volume"]
+  }
+}

@@ -7,6 +7,8 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.json.jsonb
 import org.kodein.di.instance
 import ru.aolenev.context
+import ru.aolenev.model.CompletedFuelingsToolInput
+import ru.aolenev.model.ResponseWithFinishFlag
 
 private val mapper: ObjectMapper by context.instance()
 
@@ -32,3 +34,13 @@ fun dbMigration() {
         .locations(*locations.toTypedArray()).load()
         .migrate()
 }
+
+fun deserializeToolInput(toolName: String, toolInput: Any): Any {
+    return when (toolName) {
+        "conversation_response" -> mapper.convertValue(toolInput, ResponseWithFinishFlag::class.java)
+        "get_completed_fuelings" -> mapper.convertValue(toolInput, CompletedFuelingsToolInput::class.java)
+        else -> toolInput
+    }
+}
+
+fun Any.asMap(): Map<String, Any?> = mapper.convertValue(this, Map::class.java) as Map<String, Any?>

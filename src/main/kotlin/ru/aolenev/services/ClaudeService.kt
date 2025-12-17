@@ -1,10 +1,12 @@
 package ru.aolenev.services
 
+import asMap
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.LoadingCache
+import deserializeToolInput
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -14,6 +16,7 @@ import io.ktor.server.plugins.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.*
+import ru.aolenev.model.*
 import ru.aolenev.repo.ChatTable
 import ru.aolenev.repo.MessageTable
 import java.math.BigDecimal
@@ -24,6 +27,7 @@ class ClaudeService : GptService {
 
     private val httpClient: HttpClient by context.instance()
     private val mapper: ObjectMapper by context.instance()
+    private val localMcpServer: McpServer by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -60,7 +64,7 @@ class ClaudeService : GptService {
             return requestClaude(
                 req = ClaudeRawRequest(
                     model = sonnet45,
-                    tools = listOf(mapper.readValue(singlePromptStructResponseTool, HashMap::class.java)),
+                    tools = listOf(mapper.convertValue(singlePromptStructResponseTool, McpTool::class.java).toClaude()),
                     messages = listOf(
                         ClaudeMessage(role = "user", content = prompt)
                     ),
@@ -128,7 +132,8 @@ class ClaudeService : GptService {
                 req = ClaudeRawRequest(
                     model = sonnet45,
                     messages = currentChat.messages,
-                    system = currentChat.aiRole
+                    system = currentChat.aiRole,
+                    tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
                 )
             ).body<ClaudeSimpleResponse>()
 
@@ -147,7 +152,7 @@ class ClaudeService : GptService {
 
             return ResponseWithHistory(
                 response = responseMessage,
-                messageHistory = chatCache.getIfPresent(chatId)!!.messages.map { mapOf(it.role to it.content.toString()) },
+                messageHistory = chatCache.get(chatId).messages.map { mapOf(it.role to it.content) },
                 usage = response.usage.toTokenUsage()
             )
         } catch (e: Exception) {
@@ -158,7 +163,7 @@ class ClaudeService : GptService {
 
     suspend fun chatStructuredByTool(chatId: String, aiRole: String?, userPrompt: String): FiniteChatResponse? {
         try {
-            val existingChat = chatCache.getIfPresent(chatId)
+            val existingChat = chatCache.get(chatId)
             val currentChat = if (existingChat == null) { // это первое сообщение в чате
                 // Для первого сообщения надо указать system prompt
                 if (aiRole.isNullOrEmpty()) throw BadRequestException(message = "You didn't provide an AI role")
@@ -173,22 +178,22 @@ class ClaudeService : GptService {
                 chat
             } else if (existingChat.isFinished) {
                 return FiniteChatResponse(
-                    response = "Your conversation is finished, last response is: ${(existingChat.messages.last().content as List<ClaudeMultiQuestionsContent>).first().input.response}",
+                    response = "Your conversation is finished, last response is: ${(existingChat.messages.last().content as List<ClaudeTooledContent>).first().input}",
                     isChatFinished = true
                 )
             } else { // Сообщения в чате уже были, значит были и ответы
 
                 // Последний ответ в цепочке должен соответствовать той схеме, которую мы отправили в tool
                 val tooledResponse = existingChat.messages.last()
-                val toolId = (tooledResponse.content as List<ClaudeMultiQuestionsContent>)[0].id
+                val toolId = (tooledResponse.content as List<ClaudeTooledContent>)[0].id
                 existingChat.copy(
                     messages = existingChat.messages + ClaudeMessage(
                         role = "user",
                         content = listOf(
                             TooledContent(
-                            toolId = toolId,
-                            content = userPrompt
-                        )
+                                toolId = toolId,
+                                content = userPrompt
+                            )
                         )
                     )
                 )
@@ -197,7 +202,7 @@ class ClaudeService : GptService {
             val response = requestClaude(
                 req = ClaudeRawRequest(
                     model = sonnet45,
-                    tools = listOf(mapper.readValue(multiQuestionsTool, HashMap::class.java)),
+                    tools = listOf(mapper.convertValue(multiQuestionsTool, McpTool::class.java).toClaude()),
                     messages = currentChat.messages,
                     system = currentChat.aiRole
                 )
@@ -205,24 +210,178 @@ class ClaudeService : GptService {
 
             val tooledResponse = response.content
                 .filter { it.type == "tool_use" }
-                .map { ClaudeMultiQuestionsContent(id = it.id!!, name = it.name!!, input = it.input!!) }
+                .map { ClaudeTooledContent(id = it.id!!, name = it.name!!, input = it.input!!) }
                 .last()
 
+            val input = deserializeToolInput(toolName = tooledResponse.name, toolInput = tooledResponse.input) as ResponseWithFinishFlag
             chatCache.put(
                 chatId,
                 currentChat.copy(
                     messages = currentChat.messages + ClaudeMessage(
                         role = "assistant",
                         content = listOf(tooledResponse)
-                    ), isFinished = tooledResponse.input.isFinished
+                    ),
+                    isFinished = input.isFinished
                 )
             )
 
-            return FiniteChatResponse(response = tooledResponse.input.response, isChatFinished = tooledResponse.input.isFinished)
+            return FiniteChatResponse(response = input.response, isChatFinished = input.isFinished)
         } catch (e: Exception) {
             log.error("ERROR:", e)
             return null
         }
+    }
+
+    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?): ResponseWithHistory? {
+        val aiRole = aiRoleOpt ?: "Use tools if needed"
+        try {
+            val existingChat = chatCache.get(chatId)
+            val currentChat = if (existingChat == null) { // это первое сообщение в чате
+                val chat = Chat(
+                    id = chatId,
+                    aiRole = aiRole,
+                    messages = listOf(ClaudeMessage(role = "user", content = userPrompt)),
+                    isFinished = false
+                )
+                chatCache.put(chatId, chat)
+                ChatTable.addChat(chatId = chatId, aiRole = aiRole)
+                MessageTable.saveMessage(messageContent = userPrompt, chatId = chatId, messageType = MessageType.USER)
+                chat
+            } else { // Сообщения в чате уже были, делаем автосуммирование истории, если требуется, а потом добавляем ещё одно сообщение в хвост
+
+                val compressedMessages = performAutoSummaryIfNeeded(existingChat)
+                MessageTable.saveMessage(chatId = chatId, messageContent = userPrompt, messageType = MessageType.USER)
+
+                existingChat.copy(
+                    aiRole = aiRole,
+                    messages = compressedMessages + ClaudeMessage(
+                        role = "user",
+                        content = userPrompt
+                    )
+                )
+            }
+
+            val response = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = currentChat.messages,
+                    system = currentChat.aiRole,
+                    tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
+                )
+            ).body<ClaudeResponse>()
+
+            if (response.stopReason == "tool_use") {
+                // Convert response.content to list of ClaudeTooledContent
+                @Suppress("UNCHECKED_CAST")
+                val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+                val tooledContent = contentList
+                    .filter { it["type"] == "tool_use" }
+                    .map { content ->
+                        mapper.convertValue(content, ClaudeTooledContent::class.java)
+                    }
+                    .firstOrNull()
+
+                if (tooledContent != null) {
+                    // Call localMcpServer with the appropriate tool
+                    @Suppress("UNCHECKED_CAST")
+                    val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
+                    val toolResult = localMcpServer.callTool(
+                        McpToolsParams(
+                            name = tooledContent.name,
+                            arguments = arguments
+                        )
+                    )
+                    log.info("Tool result: $toolResult")
+
+                    // If tool result has content, send it back to Claude
+                    if (toolResult.result.content != null) {
+                        val toolResultContent = TooledContent(
+                            toolId = tooledContent.id,
+                            content = toolResult.result.content.asMap().toString()
+                        )
+
+                        val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+                        val userMessage = ClaudeMessage(role = "user", content = listOf(toolResultContent))
+
+                        memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
+                        memoizeMessage(currentChat.id, userMessage, MessageType.USER)
+                        val updatedChat = chatCache.get(chatId)
+
+                        val followUpResponse = requestClaude(
+                            req = ClaudeRawRequest(
+                                model = sonnet45,
+                                messages = updatedChat.messages,
+                                system = updatedChat.aiRole,
+                                tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
+                            )
+                        ).body<ClaudeResponse>()
+
+                        log.info("Follow-up response: $followUpResponse")
+
+                        memoizeMessage(currentChat.id, ClaudeMessage(role = "assistant", content = followUpResponse.content), MessageType.ASSISTANT)
+                        val finalChat = chatCache.get(chatId)
+
+                        // Extract text response from follow-up
+                        @Suppress("UNCHECKED_CAST")
+                        val followUpContentList = mapper.convertValue(followUpResponse.content, List::class.java) as List<Map<String, Any>>
+                        val followUpTextContent = followUpContentList
+                            .filter { it["type"] == "text" }
+                            .map { content ->
+                                mapper.convertValue(content, ClaudeTextContent::class.java)
+                            }
+                            .firstOrNull()
+
+                        return ResponseWithHistory(
+                            response = followUpTextContent?.content ?: "",
+                            usage = followUpResponse.usage.toTokenUsage(),
+                            messageHistory = finalChat.messages.map { mapOf(it.role to it.content) }
+                        )
+                    }
+                }
+            } else {
+                // Deserialize to ClaudeTextContent
+                @Suppress("UNCHECKED_CAST")
+                val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+                val textContent = contentList
+                    .filter { it["type"] == "text" }
+                    .map { content ->
+                        mapper.convertValue(content, ClaudeTextContent::class.java)
+                    }
+                    .firstOrNull()
+
+                if (textContent != null) {
+                    log.info("Text response: ${textContent.content}")
+                    val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+                    memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
+
+                    val finalChat = chatCache.getIfPresent(chatId)!!
+                    return ResponseWithHistory(
+                        response = textContent.content,
+                        usage = response.usage.toTokenUsage(),
+                        messageHistory = finalChat.messages.map { mapOf(it.role to it.content) }
+                    )
+                }
+            }
+
+            return null
+        } catch (e: Exception) {
+            log.error("ERROR:", e)
+            return null
+        }
+    }
+
+    private fun memoizeMessage(chatId: String, newMessage: ClaudeMessage, messageType: MessageType) {
+        MessageTable.saveMessage(
+            messageContent = mapper.writeValueAsString(newMessage.content),
+            chatId = chatId,
+            messageType = messageType
+        )
+
+        val chat = chatCache.get(chatId)
+        chatCache.put(
+            chat.id,
+            chat.copy(messages = chat.messages + newMessage)
+        )
     }
 
     private val chatCache: LoadingCache<String, Chat> = Caffeine.newBuilder()
@@ -259,7 +418,7 @@ data class ClaudeRawRequest(
     @JsonProperty("max_tokens") val maxTokens: Int? = 2048,
     @JsonProperty("temperature") val temperature: BigDecimal? = null,
     @JsonProperty("system") val system: String?,
-    @JsonProperty("tools") val tools: List<Any>? = null,
+    @JsonProperty("tools") val tools: List<ClaudeMcpTool>? = null,
     @JsonProperty("messages") val messages: List<ClaudeMessage>
 )
 
@@ -309,12 +468,18 @@ private data class ClaudeMultiQuestionsRawContent(
     @JsonProperty("text") val text: String?,
     @JsonProperty("id") val id: String?,
     @JsonProperty("name") val name: String?,
-    @JsonProperty("input") val input: ResponseWithFinishFlag?
+    @JsonProperty("input") val input: Any?
 )
 
-private data class ClaudeMultiQuestionsContent(
+private data class ClaudeResponse(
+    @JsonProperty("usage") val usage: ClaudeUsage,
+    @JsonProperty("stop_reason") val stopReason: String,
+    @JsonProperty("content") val content: Any
+)
+
+private data class ClaudeTooledContent(
     @JsonProperty("type") val type: String = "tool_use",
     @JsonProperty("id") val id: String,
     @JsonProperty("name") val name: String,
-    @JsonProperty("input") val input: ResponseWithFinishFlag
+    @JsonProperty("input") val input: Any
 )

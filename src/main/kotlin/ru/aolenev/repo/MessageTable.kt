@@ -8,8 +8,8 @@ import org.jetbrains.exposed.sql.kotlin.datetime.datetime
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.instance
-import ru.aolenev.Message
-import ru.aolenev.MessageType
+import ru.aolenev.model.Message
+import ru.aolenev.model.MessageType
 import ru.aolenev.context
 
 object MessageTable : LongIdTable(name = "messages", columnName = "id") {

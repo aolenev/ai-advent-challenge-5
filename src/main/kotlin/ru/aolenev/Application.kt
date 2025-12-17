@@ -8,14 +8,19 @@ import io.ktor.server.netty.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.kodein.di.instance
+import ru.aolenev.model.ChatPrompt
+import ru.aolenev.model.McpToolsRequest
+import ru.aolenev.model.SinglePrompt
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.GptService
+import ru.aolenev.services.McpServer
 import ru.aolenev.services.McpService
 
 private val claude: ClaudeService by context.instance()
 private val yandex: GptService by context.instance(tag = "yandex")
 private val openai: GptService by context.instance(tag = "openai")
 private val mcpService: McpService by context.instance()
+private val mcpServer: McpServer by context.instance()
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -66,12 +71,27 @@ private fun Routing.routes() {
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to AI"))
     }
 
+    post("/tooled-conversation") { req: ChatPrompt ->
+        val response = claude.tooledChat(chatId = req.chatId, aiRoleOpt = req.systemPrompt, userPrompt = req.prompt)
+        if (response != null) {
+            call.respond(HttpStatusCode.OK, mapOf("result" to response))
+        } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to AI"))
+    }
+
     post("/mcp/tools") {
         val mcpSessionId = mcpService.initializeSession()
         if (mcpSessionId == null) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "Failed to initialize MCP session"))
         } else {
             call.respond(HttpStatusCode.OK, mcpService.getTools(mcpSessionId)!!)
+        }
+    }
+
+    post("/mcp-server/tools") { req: McpToolsRequest ->
+        when(req.method) {
+            "tools/list" -> call.respond(HttpStatusCode.OK, mcpServer.listTools())
+            "tools/call" -> call.respond(HttpStatusCode.OK, mcpServer.callTool(req.params))
+            else -> call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Unknown MCP method: ${req.method}"))
         }
     }
 }
