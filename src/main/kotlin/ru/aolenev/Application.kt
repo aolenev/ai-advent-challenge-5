@@ -16,14 +16,14 @@ import ru.aolenev.model.SinglePrompt
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.CronJobService
 import ru.aolenev.services.GptService
-import ru.aolenev.services.McpServer
+import ru.aolenev.services.TurboMcpServer
 import ru.aolenev.services.McpService
 
 private val claude: ClaudeService by context.instance()
 private val yandex: GptService by context.instance(tag = "yandex")
 private val openai: GptService by context.instance(tag = "openai")
 private val mcpService: McpService by context.instance()
-private val mcpServer: McpServer by context.instance()
+private val turboMcpServer: TurboMcpServer by context.instance()
 private val cronJobService: CronJobService by context.instance()
 
 fun main(args: Array<String>) {
@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     dbMigration()
-    cron()
+//    cron()
 
     routing {
         commonSettings()
@@ -101,8 +101,8 @@ private fun Routing.routes() {
 
     post("/mcp-server/tools") { req: McpToolsRequest ->
         when(req.method) {
-            "tools/list" -> call.respond(HttpStatusCode.OK, mcpServer.listTools())
-            "tools/call" -> call.respond(HttpStatusCode.OK, mcpServer.callTool(req.params))
+            "tools/list" -> call.respond(HttpStatusCode.OK, turboMcpServer.listTools())
+            "tools/call" -> call.respond(HttpStatusCode.OK, turboMcpServer.callTool(req.params))
             else -> call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Unknown MCP method: ${req.method}"))
         }
     }

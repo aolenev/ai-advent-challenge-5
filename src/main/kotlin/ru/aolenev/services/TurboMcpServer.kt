@@ -12,7 +12,7 @@ import ru.aolenev.model.McpToolsResponse
 import ru.aolenev.model.McpToolsResult
 import java.math.BigDecimal
 
-class McpServer {
+class TurboMcpServer {
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
     private val mapper: ObjectMapper by context.instance()
     private val turboApiService: TurboApiService by context.instance()

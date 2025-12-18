@@ -27,7 +27,8 @@ class ClaudeService : GptService {
 
     private val httpClient: HttpClient by context.instance()
     private val mapper: ObjectMapper by context.instance()
-    private val localMcpServer: McpServer by context.instance()
+    private val localTurboMcpServer: TurboMcpServer by context.instance()
+    private val localDatabaseMcpServer: DatabaseMcpServer by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -133,7 +134,7 @@ class ClaudeService : GptService {
                     model = sonnet45,
                     messages = currentChat.messages,
                     system = currentChat.aiRole,
-                    tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
+                    tools = localTurboMcpServer.listTools().result.tools?.map { it.toClaude() }
                 )
             ).body<ClaudeSimpleResponse>()
 
@@ -261,106 +262,44 @@ class ClaudeService : GptService {
                 )
             }
 
-            val response = requestClaude(
+            // Combine tools from both MCP servers
+            val turboTools = localTurboMcpServer.listTools().result.tools ?: emptyList()
+            val databaseTools = localDatabaseMcpServer.listTools().result.tools ?: emptyList()
+            val allTools = (turboTools + databaseTools).map { it.toClaude() }
+
+            var response = requestClaude(
                 req = ClaudeRawRequest(
                     model = sonnet45,
                     messages = currentChat.messages,
                     system = currentChat.aiRole,
-                    tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
+                    tools = allTools
                 )
             ).body<ClaudeResponse>()
 
-            if (response.stopReason == "tool_use") {
-                // Convert response.content to list of ClaudeTooledContent
-                @Suppress("UNCHECKED_CAST")
-                val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
-                val tooledContent = contentList
-                    .filter { it["type"] == "tool_use" }
-                    .map { content ->
-                        mapper.convertValue(content, ClaudeTooledContent::class.java)
-                    }
-                    .firstOrNull()
-
-                if (tooledContent != null) {
-                    // Call localMcpServer with the appropriate tool
-                    @Suppress("UNCHECKED_CAST")
-                    val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
-                    val toolResult = localMcpServer.callTool(
-                        McpToolsParams(
-                            name = tooledContent.name,
-                            arguments = arguments
-                        )
-                    )
-                    log.info("Tool result: $toolResult")
-
-                    // If tool result has content, send it back to Claude
-                    if (toolResult.result.content != null) {
-                        val toolResultContent = TooledContent(
-                            toolId = tooledContent.id,
-                            content = toolResult.result.content.asMap().toString()
-                        )
-
-                        val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
-                        val userMessage = ClaudeMessage(role = "user", content = listOf(toolResultContent))
-
-                        memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
-                        memoizeMessage(currentChat.id, userMessage, MessageType.USER)
-                        val updatedChat = chatCache.get(chatId)
-
-                        val followUpResponse = requestClaude(
-                            req = ClaudeRawRequest(
-                                model = sonnet45,
-                                messages = updatedChat.messages,
-                                system = updatedChat.aiRole,
-                                tools = localMcpServer.listTools().result.tools?.map { it.toClaude() }
-                            )
-                        ).body<ClaudeResponse>()
-
-                        log.info("Follow-up response: $followUpResponse")
-
-                        memoizeMessage(currentChat.id, ClaudeMessage(role = "assistant", content = followUpResponse.content), MessageType.ASSISTANT)
-                        val finalChat = chatCache.get(chatId)
-
-                        // Extract text response from follow-up
-                        @Suppress("UNCHECKED_CAST")
-                        val followUpContentList = mapper.convertValue(followUpResponse.content, List::class.java) as List<Map<String, Any>>
-                        val followUpTextContent = followUpContentList
-                            .filter { it["type"] == "text" }
-                            .map { content ->
-                                mapper.convertValue(content, ClaudeTextContent::class.java)
-                            }
-                            .firstOrNull()
-
-                        return ResponseWithHistory(
-                            response = followUpTextContent?.content ?: "",
-                            usage = followUpResponse.usage.toTokenUsage(),
-                            messageHistory = finalChat.messages.map { mapOf(it.role to it.content) }
-                        )
-                    }
+            while (response.stopReason == "tool_use") {
+                response = handleToolUse(chatId, response, allTools)
+            }
+            // Deserialize to ClaudeTextContent
+            @Suppress("UNCHECKED_CAST")
+            val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+            val textContent = contentList
+                .filter { it["type"] == "text" }
+                .map { content ->
+                    mapper.convertValue(content, ClaudeTextContent::class.java)
                 }
-            } else {
-                // Deserialize to ClaudeTextContent
-                @Suppress("UNCHECKED_CAST")
-                val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
-                val textContent = contentList
-                    .filter { it["type"] == "text" }
-                    .map { content ->
-                        mapper.convertValue(content, ClaudeTextContent::class.java)
-                    }
-                    .firstOrNull()
+                .firstOrNull()
 
-                if (textContent != null) {
-                    log.info("Text response: ${textContent.content}")
-                    val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
-                    memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
+            if (textContent != null) {
+                log.info("Text response: ${textContent.content}")
+                val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+                memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
 
-                    val finalChat = chatCache.getIfPresent(chatId)!!
-                    return ResponseWithHistory(
-                        response = textContent.content,
-                        usage = response.usage.toTokenUsage(),
-                        messageHistory = finalChat.messages.map { mapOf(it.role to it.content) }
-                    )
-                }
+                val finalChat = chatCache.getIfPresent(chatId)!!
+                return ResponseWithHistory(
+                    response = textContent.content,
+                    usage = response.usage.toTokenUsage(),
+                    messageHistory = finalChat.messages.map { mapOf(it.role to it.content) }
+                )
             }
 
             return null
@@ -368,6 +307,82 @@ class ClaudeService : GptService {
             log.error("ERROR:", e)
             return null
         }
+    }
+
+    private suspend fun handleToolUse(chatId: String, response: ClaudeResponse, allTools: List<ClaudeMcpTool>): ClaudeResponse {
+        val currentChat = chatCache.get(chatId)
+        // Convert response.content to list of ClaudeTooledContent
+        @Suppress("UNCHECKED_CAST")
+        val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+        val tooledContent = contentList
+            .filter { it["type"] == "tool_use" }
+            .map { content ->
+                mapper.convertValue(content, ClaudeTooledContent::class.java)
+            }
+            .firstOrNull()
+
+        if (tooledContent != null) {
+            // Route tool call to the appropriate MCP server
+            @Suppress("UNCHECKED_CAST")
+            val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
+            val toolResult = when (tooledContent.name) {
+                "get_completed_fuelings" -> localTurboMcpServer.callTool(
+                    McpToolsParams(
+                        name = tooledContent.name,
+                        arguments = arguments
+                    )
+                )
+                "save_fuelings_stat" -> localDatabaseMcpServer.callTool(
+                    McpToolsParams(
+                        name = tooledContent.name,
+                        arguments = arguments
+                    )
+                )
+                else -> {
+                    log.error("Unknown tool: ${tooledContent.name}")
+                    McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = mapOf("error" to "Unknown tool: ${tooledContent.name}"),
+                            isError = true
+                        )
+                    )
+                }
+            }
+            log.info("Tool result: $toolResult")
+
+            // If tool result has content, send it back to Claude
+            if (toolResult.result.content != null) {
+                val toolResultContent = TooledContent(
+                    toolId = tooledContent.id,
+                    content = toolResult.result.content.asMap().toString()
+                )
+
+                val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+                val userMessage = ClaudeMessage(role = "user", content = listOf(toolResultContent))
+
+                memoizeMessage(currentChat.id, assistantMessage, MessageType.ASSISTANT)
+                memoizeMessage(currentChat.id, userMessage, MessageType.USER)
+                val updatedChat = chatCache.get(chatId)
+
+                val followUpResponse = requestClaude(
+                    req = ClaudeRawRequest(
+                        model = sonnet45,
+                        messages = updatedChat.messages,
+                        system = updatedChat.aiRole,
+                        tools = allTools
+                    )
+                ).body<ClaudeResponse>()
+
+                log.info("Follow-up response: $followUpResponse")
+
+//                memoizeMessage(currentChat.id, ClaudeMessage(role = "assistant", content = followUpResponse.content), MessageType.ASSISTANT)
+
+                return followUpResponse
+            }
+        }
+        return response
     }
 
     private fun memoizeMessage(chatId: String, newMessage: ClaudeMessage, messageType: MessageType) {

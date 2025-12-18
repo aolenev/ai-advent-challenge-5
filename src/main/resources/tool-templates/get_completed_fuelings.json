@@ -1,16 +1,16 @@
 {
   "name": "get_completed_fuelings",
-  "description": "Информация об успешных топливных заказах за период",
+  "description": "Information about completed fuelings stat for period",
   "inputSchema": {
     "type": "object",
     "properties": {
       "from": {
         "type": "number",
-        "description": "Unix epoch time в миллисекундвх"
+        "description": "Start of period. Unix epoch time in milliseconds"
       },
       "to": {
         "type": "number",
-        "description": "Дата в миллисекундах"
+        "description": "End of period. Unix epoch time in milliseconds"
       }
     },
     "required": ["from"]
@@ -20,11 +20,11 @@
     "properties": {
       "count": {
         "type": "number",
-        "description": "Количество успешно завершённых заказов"
+        "description": "Count of completed fuelings"
       },
       "volume": {
         "type": "number",
-        "description": "Суммарный объем заказов в литрах"
+        "description": "Total volume in liters"
       }
     },
     "required": ["count", "volume"]

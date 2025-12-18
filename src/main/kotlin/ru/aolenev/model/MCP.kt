@@ -70,7 +70,7 @@ data class McpTool(
     @JsonProperty("name") val name: String,
     @JsonProperty("description") val description: String?,
     @JsonProperty("inputSchema") val inputSchema: Any,
-    @JsonProperty("outputSchema") val outputSchema: Any
+    @JsonProperty("outputSchema") val outputSchema: Any?
 )
 
 data class CompletedFuelingsToolInput(
@@ -81,4 +81,16 @@ data class CompletedFuelingsToolInput(
 data class CompletedFuelingsToolOutput(
     @JsonProperty("count") val count: Int,
     @JsonProperty("volume") val volume: BigDecimal
+)
+
+data class SaveFuelingsStatToolInput(
+    @JsonProperty("count") val count: Int,
+    @JsonProperty("volume") val volume: BigDecimal,
+    @JsonProperty("from") val from: Long,
+    @JsonProperty("to") val to: Long? = null
+)
+
+data class SaveFuelingsStatToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("message") val message: String
 )

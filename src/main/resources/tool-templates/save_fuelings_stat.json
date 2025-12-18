@@ -1,0 +1,26 @@
+{
+  "name": "save_fuelings_stat",
+  "description": "Save fuelings stat to database",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "count": {
+        "type": "number",
+        "description": "Count of completed fuelings"
+      },
+      "volume": {
+        "type": "number",
+        "description": "Total volume in liters"
+      },
+      "from": {
+        "type": "number",
+        "description": "Start of period. Unix epoch time in milliseconds"
+      },
+      "to": {
+        "type": "number",
+        "description": "End of period. Unix epoch time in milliseconds"
+      }
+    },
+    "required": ["count", "volume", "from"]
+  }
+}
