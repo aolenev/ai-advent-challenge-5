@@ -25,6 +25,7 @@ import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.CronJobService
 import ru.aolenev.services.DatabaseMcpServer
 import ru.aolenev.services.GptService
+import ru.aolenev.services.ShellMcpServer
 import ru.aolenev.services.TurboMcpServer
 import ru.aolenev.services.McpService
 import ru.aolenev.services.OpenAIService
@@ -92,6 +93,7 @@ val serviceModule = DI.Module("service") {
     bind<McpService>() with singleton { McpService() }
     bind<TurboMcpServer>() with singleton { TurboMcpServer() }
     bind<DatabaseMcpServer>() with singleton { DatabaseMcpServer() }
+    bind<ShellMcpServer>() with singleton { ShellMcpServer() }
     bind<TurboApiService>() with singleton { TurboApiService() }
     bind<CronJobService>() with singleton { CronJobService() }
 }

@@ -94,3 +94,13 @@ data class SaveFuelingsStatToolOutput(
     @JsonProperty("success") val success: Boolean,
     @JsonProperty("message") val message: String
 )
+
+data class ExecuteShellCommandToolInput(
+    @JsonProperty("command") val command: String,
+    @JsonProperty("commandParameters") val commandParameters: List<String>,
+    @JsonProperty("workingDirectory") val workingDirectory: String? = null
+)
+
+data class ExecuteShellCommandToolOutput(
+    @JsonProperty("stdout") val stdout: String
+)

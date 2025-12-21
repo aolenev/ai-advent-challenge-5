@@ -29,6 +29,7 @@ class ClaudeService : GptService {
     private val mapper: ObjectMapper by context.instance()
     private val localTurboMcpServer: TurboMcpServer by context.instance()
     private val localDatabaseMcpServer: DatabaseMcpServer by context.instance()
+    private val localShellMcpServer: ShellMcpServer by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -262,10 +263,11 @@ class ClaudeService : GptService {
                 )
             }
 
-            // Combine tools from both MCP servers
+            // Combine tools from all MCP servers
             val turboTools = localTurboMcpServer.listTools().result.tools ?: emptyList()
             val databaseTools = localDatabaseMcpServer.listTools().result.tools ?: emptyList()
-            val allTools = (turboTools + databaseTools).map { it.toClaude() }
+            val shellTools = localShellMcpServer.listTools().result.tools ?: emptyList()
+            val allTools = (turboTools + databaseTools + shellTools).map { it.toClaude() }
 
             var response = requestClaude(
                 req = ClaudeRawRequest(
@@ -333,6 +335,12 @@ class ClaudeService : GptService {
                     )
                 )
                 "save_fuelings_stat" -> localDatabaseMcpServer.callTool(
+                    McpToolsParams(
+                        name = tooledContent.name,
+                        arguments = arguments
+                    )
+                )
+                "execute_shell_command" -> localShellMcpServer.callTool(
                     McpToolsParams(
                         name = tooledContent.name,
                         arguments = arguments

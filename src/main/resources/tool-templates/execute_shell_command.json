@@ -1,0 +1,35 @@
+{
+  "name": "execute_shell_command",
+  "description": "Executes a shell command and returns the output, error, and exit code",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string",
+        "description": "The shell command to execute"
+      },
+      "commandParameters": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Parameters for shell command"
+      },
+      "workingDirectory": {
+        "type": "string",
+        "description": "Optional working directory for command execution. If not provided, uses current directory"
+      }
+    },
+    "required": ["command"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "stdout": {
+        "type": "string",
+        "description": "Standard output from the command"
+      }
+    },
+    "required": ["stdout"]
+  }
+}
