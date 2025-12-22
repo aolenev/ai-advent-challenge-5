@@ -46,6 +46,8 @@ dependencies {
 
     implementation("com.anthropic:anthropic-java:2.10.0")
     implementation("com.lordcodes.turtle:turtle:0.10.0")
+
+    testImplementation(kotlin("test"))
 }
 
 tasks.test {

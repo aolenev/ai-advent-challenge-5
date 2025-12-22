@@ -16,6 +16,7 @@ import ru.aolenev.model.SinglePrompt
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.CronJobService
 import ru.aolenev.services.GptService
+import ru.aolenev.services.OllamaRagService
 import ru.aolenev.services.TurboMcpServer
 import ru.aolenev.services.McpService
 
@@ -25,6 +26,7 @@ private val openai: GptService by context.instance(tag = "openai")
 private val mcpService: McpService by context.instance()
 private val turboMcpServer: TurboMcpServer by context.instance()
 private val cronJobService: CronJobService by context.instance()
+private val ollamaRagService: OllamaRagService by context.instance()
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -104,6 +106,15 @@ private fun Routing.routes() {
             "tools/list" -> call.respond(HttpStatusCode.OK, turboMcpServer.listTools())
             "tools/call" -> call.respond(HttpStatusCode.OK, turboMcpServer.callTool(req.params))
             else -> call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Unknown MCP method: ${req.method}"))
+        }
+    }
+
+    post("/rag/process") {
+        try {
+            ollamaRagService.processAndStoreEmbeddings()
+            call.respond(HttpStatusCode.OK, mapOf("result" to "Embeddings processed and stored successfully"))
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
         }
     }
 }
