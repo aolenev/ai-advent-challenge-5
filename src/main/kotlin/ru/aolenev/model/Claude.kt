@@ -45,7 +45,8 @@ data class TokenUsage(
 data class ChatPrompt(
     val chatId: String,
     val prompt: String,
-    val systemPrompt: String?
+    val systemPrompt: String?,
+    val withRag: Boolean = false
 )
 
 data class FiniteChatResponse(

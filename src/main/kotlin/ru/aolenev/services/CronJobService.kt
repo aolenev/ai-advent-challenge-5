@@ -28,7 +28,8 @@ class CronJobService {
         val response = claudeService.tooledChat(
             chatId = randomChatId,
             userPrompt = userPrompt,
-            aiRoleOpt = aiRole
+            aiRoleOpt = aiRole,
+            withRag = false
         )?.response
 
         if (response != null) {

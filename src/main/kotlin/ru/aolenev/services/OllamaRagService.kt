@@ -1,26 +1,27 @@
 package ru.aolenev.services
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.typesafe.config.Config
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.Serializable
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.text.PDFTextStripper
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.context
-import java.io.File
+import ru.aolenev.repo.RagEmbeddingsTable
+import java.io.InputStream
 import kotlin.math.max
 import kotlin.math.min
 
-@Serializable
 data class EmbeddingRequest(
     val model: String,
     val prompt: String
 )
 
-@Serializable
 data class EmbeddingResponse(
     val embedding: List<Double>
 )
@@ -51,8 +52,8 @@ class OllamaRagService {
         return chunks
     }
 
-    private suspend fun sendChunksToOllama(chunks: List<String>): List<List<Double>> {
-        val embeddings = mutableListOf<List<Double>>()
+    suspend fun getEmbeddings(chunks: List<String>): Map<String, List<Double>> {
+        val embeddings = mutableMapOf<String, List<Double>>()
         var currentChunkNumber = 0
         chunks.forEach { chunk ->
             currentChunkNumber += 1
@@ -62,7 +63,7 @@ class OllamaRagService {
                 setBody(EmbeddingRequest(model = model, prompt = chunk))
             }
             val embeddingResponse = response.body<EmbeddingResponse>()
-            embeddings.add(embeddingResponse.embedding)
+            embeddings += chunk to embeddingResponse.embedding
             log.info("Чанк $currentChunkNumber обработан")
         }
 
@@ -70,19 +71,61 @@ class OllamaRagService {
         return embeddings
     }
 
+    private fun parseTxtFile(inputStream: InputStream): String {
+        return inputStream.bufferedReader().use { it.readText() }
+    }
+
+    private fun parseJsonFile(inputStream: InputStream): String {
+        val jsonNode = objectMapper.readTree(inputStream)
+        return extractTextFromJson(jsonNode)
+    }
+
+    private fun extractTextFromJson(node: JsonNode): String {
+        val textBuilder = StringBuilder()
+
+        when {
+            node.isTextual -> textBuilder.append(node.asText()).append(" ")
+            node.isArray -> node.forEach { textBuilder.append(extractTextFromJson(it)) }
+            node.isObject -> node.fields().forEach { (_, value) ->
+                textBuilder.append(extractTextFromJson(value))
+            }
+        }
+
+        return textBuilder.toString().trim()
+    }
+
+    private fun parsePdfFile(inputStream: InputStream): String {
+        return PDDocument.load(inputStream).use { document ->
+            val stripper = PDFTextStripper()
+            stripper.getText(document)
+        }
+    }
+
+    private fun parseFile(inputStream: InputStream, fileName: String): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+
+        log.info("Parsing file: $fileName with extension: $extension")
+
+        return when (extension) {
+            "txt" -> parseTxtFile(inputStream)
+            "json" -> parseJsonFile(inputStream)
+            "pdf" -> parsePdfFile(inputStream)
+            else -> throw IllegalArgumentException("Unsupported file type: $extension. Supported types: .txt, .json, .pdf")
+        }
+    }
+
     suspend fun processAndStoreEmbeddings(
         inputFileName: String = "sample.txt",
-        outputFileName: String = "embeddings.json",
         chunkSize: Int = 300,
         overlap: Int = 50
     ) {
         val resourceStream = this::class.java.classLoader.getResourceAsStream(inputFileName)
             ?: throw IllegalArgumentException("File $inputFileName not found in resources")
 
-        val text = resourceStream.bufferedReader().use { it.readText() }
+        val text = parseFile(resourceStream, inputFileName)
 
         val chunks = splitByChunks(text, chunkSize, overlap)
-        val embeddings = sendChunksToOllama(chunks)
+        val embeddings = getEmbeddings(chunks)
 
         // Prepare output data
         val output = mapOf(
@@ -90,12 +133,12 @@ class OllamaRagService {
                 "model" to model,
                 "chunkSize" to chunkSize,
                 "overlap" to overlap,
-                "totalChunks" to chunks.size
+                "totalChunks" to chunks.size,
+                "sourceFile" to inputFileName
             ),
-            "embeddings" to embeddings
         )
+        log.info("Embeddings metadata: $output")
 
-        val outputFile = File("src/main/resources/$outputFileName")
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputFile, output)
+        embeddings.forEach { (chunk, embeddings) -> RagEmbeddingsTable.insertEmbedding(chunk, embeddings) }
     }
 }

@@ -19,6 +19,7 @@ import ru.aolenev.*
 import ru.aolenev.model.*
 import ru.aolenev.repo.ChatTable
 import ru.aolenev.repo.MessageTable
+import ru.aolenev.repo.RagEmbeddingsTable
 import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
 
@@ -30,6 +31,7 @@ class ClaudeService : GptService {
     private val localTurboMcpServer: TurboMcpServer by context.instance()
     private val localDatabaseMcpServer: DatabaseMcpServer by context.instance()
     private val localShellMcpServer: ShellMcpServer by context.instance()
+    private val ollamaRagService: OllamaRagService by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -99,6 +101,40 @@ class ClaudeService : GptService {
 
             listOf(ClaudeMessage(role = "user", content = responseMessage))
         } else chat.messages
+    }
+
+    private suspend fun enrichPromptWithRagContext(userPrompt: String): String {
+        log.info("Обогащаем промпт контекстом из RAG")
+
+        // Split prompt into chunks
+        val chunks = ollamaRagService.splitByChunks(userPrompt, chunkSize = 50, overlap = 10)
+        log.info("Разбили промпт на ${chunks.size} чанков")
+
+        // Get embeddings for chunks
+        val embeddingsMap = ollamaRagService.getEmbeddings(chunks)
+
+        // Find similar contexts for each chunk
+        val allSimilarChunks = mutableSetOf<String>()
+        embeddingsMap.forEach { (chunk, embedding) ->
+            val similarChunks = RagEmbeddingsTable.findSimilarChunks(embedding)
+            allSimilarChunks.addAll(similarChunks)
+            log.info("Найдено ${similarChunks.size} похожих чанков для chunk: ${chunk.take(50)}...")
+        }
+
+        return if (allSimilarChunks.isNotEmpty()) {
+            val context = allSimilarChunks.joinToString("\n\n")
+            log.info("Добавляем ${allSimilarChunks.size} уникальных чанков как контекст")
+            """
+            |Additional context from knowledge base:
+            |
+            |$context
+            |
+            |User question: $userPrompt
+            """.trimMargin()
+        } else {
+            log.info("Похожих чанков не найдено, используем оригинальный промпт")
+            userPrompt
+        }
     }
 
     suspend fun unstructuredChatWithAutoSummary(chatId: String, aiRole: String?, userPrompt: String): ResponseWithHistory? {
@@ -234,31 +270,32 @@ class ClaudeService : GptService {
         }
     }
 
-    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?): ResponseWithHistory? {
+    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?, withRag: Boolean): ResponseWithHistory? {
         val aiRole = aiRoleOpt ?: "Use tools if needed"
         try {
+            val richPrompt = if (withRag) enrichPromptWithRagContext(userPrompt) else userPrompt
             val existingChat = chatCache.get(chatId)
             val currentChat = if (existingChat == null) { // это первое сообщение в чате
                 val chat = Chat(
                     id = chatId,
                     aiRole = aiRole,
-                    messages = listOf(ClaudeMessage(role = "user", content = userPrompt)),
+                    messages = listOf(ClaudeMessage(role = "user", content = richPrompt)),
                     isFinished = false
                 )
                 chatCache.put(chatId, chat)
                 ChatTable.addChat(chatId = chatId, aiRole = aiRole)
-                MessageTable.saveMessage(messageContent = userPrompt, chatId = chatId, messageType = MessageType.USER)
+                MessageTable.saveMessage(messageContent = richPrompt, chatId = chatId, messageType = MessageType.USER)
                 chat
             } else { // Сообщения в чате уже были, делаем автосуммирование истории, если требуется, а потом добавляем ещё одно сообщение в хвост
 
                 val compressedMessages = performAutoSummaryIfNeeded(existingChat)
-                MessageTable.saveMessage(chatId = chatId, messageContent = userPrompt, messageType = MessageType.USER)
+                MessageTable.saveMessage(chatId = chatId, messageContent = richPrompt, messageType = MessageType.USER)
 
                 existingChat.copy(
                     aiRole = aiRole,
                     messages = compressedMessages + ClaudeMessage(
                         role = "user",
-                        content = userPrompt
+                        content = richPrompt
                     )
                 )
             }

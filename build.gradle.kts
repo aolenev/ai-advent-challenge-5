@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.flyway.postgres)
     implementation(libs.postgresql)
     implementation(libs.hikari.cp)
+    implementation(libs.pdfbox)
 
     implementation("com.anthropic:anthropic-java:2.10.0")
     implementation("com.lordcodes.turtle:turtle:0.10.0")
