@@ -46,7 +46,8 @@ data class ChatPrompt(
     val chatId: String,
     val prompt: String,
     val systemPrompt: String?,
-    val withRag: Boolean = false
+    val withRag: Boolean = false,
+    val minSimilarity: BigDecimal = BigDecimal(0.7)
 )
 
 data class FiniteChatResponse(

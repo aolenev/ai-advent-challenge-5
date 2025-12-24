@@ -7,6 +7,7 @@ import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.WsSessionsStorage
 import ru.aolenev.context
+import java.math.BigDecimal
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -29,7 +30,8 @@ class CronJobService {
             chatId = randomChatId,
             userPrompt = userPrompt,
             aiRoleOpt = aiRole,
-            withRag = false
+            withRag = false,
+            minSimilarity = BigDecimal(0.7)
         )?.response
 
         if (response != null) {

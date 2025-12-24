@@ -6,6 +6,7 @@ import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.kodein.di.instance
 import ru.aolenev.context
+import java.math.BigDecimal
 
 class VectorColumnType(private val dimension: Int) : ColumnType<List<Double>>() {
     override fun sqlType(): String = "VECTOR($dimension)"
@@ -55,12 +56,12 @@ object RagEmbeddingsTable : LongIdTable(name = "rag_embeddings", columnName = "i
      * @param queryEmbedding The embedding vector to compare against
      * @return List of RagEmbedding with similarity scores, ordered by similarity (highest first)
      */
-    fun findSimilarChunks(queryEmbedding: List<Double>): List<String> = transaction(db) {
+    fun findSimilarChunks(queryEmbedding: List<Double>, minSimilarity: BigDecimal): List<String> = transaction(db) {
         val sql = """
             SELECT chunk,
                    1 - (embedding <=> ?::vector) AS similarity
             FROM rag_embeddings
-            WHERE 1 - (embedding <=> ?::vector) > 0.7
+            WHERE 1 - (embedding <=> ?::vector) > ?
             ORDER BY embedding <=> ?::vector
         """.trimIndent()
 
@@ -69,6 +70,7 @@ object RagEmbeddingsTable : LongIdTable(name = "rag_embeddings", columnName = "i
             args = listOf(
                 Pair(VectorColumnType(768), queryEmbedding),
                 Pair(VectorColumnType(768), queryEmbedding),
+                Pair(DecimalColumnType(5, 2), minSimilarity),
                 Pair(VectorColumnType(768), queryEmbedding)
             ),
             explicitStatementType = StatementType.SELECT

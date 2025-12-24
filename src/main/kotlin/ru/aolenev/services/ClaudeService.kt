@@ -103,7 +103,7 @@ class ClaudeService : GptService {
         } else chat.messages
     }
 
-    private suspend fun enrichPromptWithRagContext(userPrompt: String): String {
+    private suspend fun enrichPromptWithRagContext(userPrompt: String, minSimilarity: BigDecimal): String {
         log.info("Обогащаем промпт контекстом из RAG")
 
         // Split prompt into chunks
@@ -116,7 +116,7 @@ class ClaudeService : GptService {
         // Find similar contexts for each chunk
         val allSimilarChunks = mutableSetOf<String>()
         embeddingsMap.forEach { (chunk, embedding) ->
-            val similarChunks = RagEmbeddingsTable.findSimilarChunks(embedding)
+            val similarChunks = RagEmbeddingsTable.findSimilarChunks(embedding, minSimilarity)
             allSimilarChunks.addAll(similarChunks)
             log.info("Найдено ${similarChunks.size} похожих чанков для chunk: ${chunk.take(50)}...")
         }
@@ -270,10 +270,10 @@ class ClaudeService : GptService {
         }
     }
 
-    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?, withRag: Boolean): ResponseWithHistory? {
+    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?, withRag: Boolean, minSimilarity: BigDecimal): ResponseWithHistory? {
         val aiRole = aiRoleOpt ?: "Use tools if needed"
         try {
-            val richPrompt = if (withRag) enrichPromptWithRagContext(userPrompt) else userPrompt
+            val richPrompt = if (withRag) enrichPromptWithRagContext(userPrompt, minSimilarity) else userPrompt
             val existingChat = chatCache.get(chatId)
             val currentChat = if (existingChat == null) { // это первое сообщение в чате
                 val chat = Chat(

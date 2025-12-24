@@ -86,7 +86,14 @@ private fun Routing.routes() {
     }
 
     post("/tooled-conversation") { req: ChatPrompt ->
-        val response = claude.tooledChat(chatId = req.chatId, aiRoleOpt = req.systemPrompt, userPrompt = req.prompt, withRag = req.withRag)
+        val response = claude.tooledChat(
+            chatId = req.chatId,
+            aiRoleOpt = req.systemPrompt,
+            userPrompt = req.prompt,
+            withRag = req.withRag,
+            minSimilarity = req.minSimilarity
+        )
+
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to AI"))
