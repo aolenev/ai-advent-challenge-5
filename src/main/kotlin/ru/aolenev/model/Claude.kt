@@ -50,6 +50,11 @@ data class ChatPrompt(
     val minSimilarity: BigDecimal = BigDecimal(0.7)
 )
 
+data class HelpRequest(
+    val question: String,
+    val minSimilarity: BigDecimal = BigDecimal(0.7)
+)
+
 data class FiniteChatResponse(
     val response: String,
     val isChatFinished: Boolean

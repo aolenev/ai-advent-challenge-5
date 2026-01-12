@@ -26,6 +26,11 @@ data class EmbeddingResponse(
     val embedding: List<Double>
 )
 
+data class CreateEmbeddings(
+    val fileName: String?,
+    val separator: List<String>? = null
+)
+
 class OllamaRagService {
     private val httpClient: HttpClient by context.instance()
     private val config: Config by context.instance()
@@ -36,7 +41,20 @@ class OllamaRagService {
     private val ollamaUrl: String = config.getString("ai-challenge.ollama.baseUrl")
     private val model: String = config.getString("ai-challenge.ollama.model")
 
-    fun splitByChunks(text: String, chunkSize: Int = 300, overlap: Int = 50): List<String> {
+    fun splitByChunks(
+        text: String,
+        chunkSize: Int = 300,
+        overlap: Int = 50,
+        separator: List<String>? = null
+    ): List<String> {
+        // If custom separators are provided, use them and ignore overlap
+        if (separator != null && separator.isNotEmpty()) {
+            // Create a regex pattern that matches any of the separators
+            val pattern = separator.joinToString("|") { Regex.escape(it) }
+            return text.split(Regex(pattern)).filter { it.isNotBlank() }
+        }
+
+        // Original word-based splitting with overlap
         val chunks = mutableListOf<String>()
         val words = text.split(Regex("\\s+"))
 
@@ -107,7 +125,7 @@ class OllamaRagService {
         log.info("Parsing file: $fileName with extension: $extension")
 
         return when (extension) {
-            "txt" -> parseTxtFile(inputStream)
+            "txt", "md" -> parseTxtFile(inputStream)
             "json" -> parseJsonFile(inputStream)
             "pdf" -> parsePdfFile(inputStream)
             else -> throw IllegalArgumentException("Unsupported file type: $extension. Supported types: .txt, .json, .pdf")
@@ -117,14 +135,17 @@ class OllamaRagService {
     suspend fun processAndStoreEmbeddings(
         inputFileName: String = "sample.txt",
         chunkSize: Int = 300,
-        overlap: Int = 50
+        overlap: Int = 50,
+        separator: List<String>? = null
     ) {
         val resourceStream = this::class.java.classLoader.getResourceAsStream(inputFileName)
             ?: throw IllegalArgumentException("File $inputFileName not found in resources")
 
         val text = parseFile(resourceStream, inputFileName)
 
-        val chunks = splitByChunks(text, chunkSize, overlap)
+        // When custom separator is used, overlap should be 0
+        val actualOverlap = if (!separator.isNullOrEmpty()) 0 else overlap
+        val chunks = splitByChunks(text, chunkSize, actualOverlap, separator)
         val embeddings = getEmbeddings(chunks)
 
         // Prepare output data
@@ -132,7 +153,8 @@ class OllamaRagService {
             "metadata" to mapOf(
                 "model" to model,
                 "chunkSize" to chunkSize,
-                "overlap" to overlap,
+                "overlap" to actualOverlap,
+                "separator" to (separator?.joinToString(", ") ?: "whitespace"),
                 "totalChunks" to chunks.size,
                 "sourceFile" to inputFileName
             ),

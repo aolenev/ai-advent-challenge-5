@@ -11,14 +11,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.kodein.di.instance
 import ru.aolenev.model.ChatPrompt
+import ru.aolenev.model.HelpRequest
 import ru.aolenev.model.McpToolsRequest
 import ru.aolenev.model.SinglePrompt
-import ru.aolenev.services.ClaudeService
-import ru.aolenev.services.CronJobService
-import ru.aolenev.services.GptService
-import ru.aolenev.services.OllamaRagService
-import ru.aolenev.services.TurboMcpServer
-import ru.aolenev.services.McpService
+import ru.aolenev.services.*
 
 private val claude: ClaudeService by context.instance()
 private val yandex: GptService by context.instance(tag = "yandex")
@@ -116,12 +112,23 @@ private fun Routing.routes() {
         }
     }
 
-    post("/rag/process") {
+    post("/rag/process") { req: CreateEmbeddings ->
         try {
-            ollamaRagService.processAndStoreEmbeddings()
+            if (req.fileName != null) {
+                ollamaRagService.processAndStoreEmbeddings(inputFileName = req.fileName, separator = req.separator)
+            } else {
+                ollamaRagService.processAndStoreEmbeddings(separator = req.separator)
+            }
             call.respond(HttpStatusCode.OK, mapOf("result" to "Embeddings processed and stored successfully"))
         } catch (e: Exception) {
             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
         }
+    }
+
+    post("/help") { req: HelpRequest ->
+        val response = claude.helpWithRag(question = req.question, minSimilarity = req.minSimilarity)
+        if (response != null) {
+            call.respond(HttpStatusCode.OK, mapOf("result" to response))
+        } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot process help request"))
     }
 }

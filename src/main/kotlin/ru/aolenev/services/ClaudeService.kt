@@ -458,6 +458,30 @@ class ClaudeService : GptService {
             } else null
         }
 
+    suspend fun helpWithRag(question: String, minSimilarity: BigDecimal): String? {
+        try {
+            log.info("Processing help request with RAG for question: $question")
+
+            // Enrich the question with RAG context
+            val enrichedPrompt = enrichPromptWithRagContext(question, minSimilarity)
+
+            // Send to Claude
+            val response = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = listOf(ClaudeMessage(role = "user", content = enrichedPrompt)),
+                    system = "You are a helpful assistant. Answer the user's question based on the provided context from the knowledge base. If the context doesn't contain relevant information, say so clearly.",
+                    maxTokens = 4096
+                )
+            ).body<ClaudeSimpleResponse>()
+
+            return response.content.first().content
+        } catch (e: Exception) {
+            log.error("Error processing help request", e)
+            return null
+        }
+    }
+
     private suspend fun requestClaude(req: ClaudeRawRequest): HttpResponse {
         return httpClient.post("https://api.anthropic.com/v1/messages") {
             headers {
