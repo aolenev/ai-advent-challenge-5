@@ -442,6 +442,56 @@ Get help by asking questions with automatic context retrieval from the knowledge
 
 ---
 
+### 10. Make Pull Request Review
+
+Automatically review the latest pull request from the ai-advent-challenge-5 repository using Claude AI with GitHub MCP tools and RAG context.
+
+**Endpoint:** `POST /make-review`
+
+**Request Body:** Empty
+
+**Response (Success - 200 OK):**
+```json
+{
+  "result": "## Pull Request Review\n\n### Overview\n[PR details]\n\n### Code Quality\n[Analysis]\n\n### Potential Issues\n[Issues found]\n\n### Recommendations\n[Suggestions for improvement]"
+}
+```
+
+**Response (Error - 503 Service Unavailable):**
+```json
+{
+  "result": "Cannot process review request"
+}
+```
+
+**How it works:**
+1. Initializes a GitHub MCP session to access GitHub API tools
+2. Fetches available GitHub tools (e.g., list_pull_requests, get_pull_request_details)
+3. Creates an initial prompt asking Claude to review the latest PR from aolenev/ai-advent-challenge-5
+4. Enriches the prompt with RAG context from the knowledge base (minimum similarity: 0.7)
+5. Claude uses GitHub MCP tools to:
+   - List pull requests
+   - Get PR details (title, description, changes, files modified)
+   - Analyze the code changes
+6. Tool results are sent back to Claude for analysis
+7. Claude provides a comprehensive review with feedback on:
+   - Code quality
+   - Potential bugs
+   - Security issues
+   - Performance concerns
+   - Best practices
+   - Suggested improvements
+
+**Notes:**
+- Requires GITHUB_PAT environment variable to be set for GitHub API access
+- Repository is hardcoded to aolenev/ai-advent-challenge-5
+- Uses RAG context with minimum similarity threshold of 0.7
+- Claude acts as a code reviewer with access to GitHub tools
+- The review is comprehensive and includes constructive feedback
+- Tool calls are handled automatically in a loop until Claude finishes the review
+
+---
+
 ## WebSocket API
 
 ### Chat WebSocket

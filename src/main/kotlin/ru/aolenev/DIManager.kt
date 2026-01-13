@@ -24,11 +24,12 @@ import org.kodein.di.singleton
 import ru.aolenev.services.ClaudeService
 import ru.aolenev.services.CronJobService
 import ru.aolenev.services.DatabaseMcpServer
+import ru.aolenev.services.GitHubMcpService
 import ru.aolenev.services.GptService
 import ru.aolenev.services.OllamaRagService
 import ru.aolenev.services.ShellMcpServer
 import ru.aolenev.services.TurboMcpServer
-import ru.aolenev.services.McpService
+import ru.aolenev.services.CommonMcpService
 import ru.aolenev.services.OpenAIService
 import ru.aolenev.services.TurboApiService
 import ru.aolenev.services.YandexGptService
@@ -91,7 +92,8 @@ val serviceModule = DI.Module("service") {
     bind<ClaudeService>() with singleton { ClaudeService() }
     bind<GptService>(tag = "yandex") with singleton { YandexGptService() }
     bind<GptService>(tag = "openai") with singleton { OpenAIService() }
-    bind<McpService>() with singleton { McpService() }
+    bind<CommonMcpService>() with singleton { CommonMcpService() }
+    bind<GitHubMcpService>() with singleton { GitHubMcpService() }
     bind<TurboMcpServer>() with singleton { TurboMcpServer() }
     bind<DatabaseMcpServer>() with singleton { DatabaseMcpServer() }
     bind<ShellMcpServer>() with singleton { ShellMcpServer() }
