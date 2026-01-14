@@ -88,7 +88,7 @@ open class CommonMcpService {
         }
     }
 
-    suspend fun getTools(mcpSessionId: String): List<McpTool>? {
+    open suspend fun getTools(mcpSessionId: String): List<McpTool>? {
         return try {
             log.info("Fetching tools list for session: $mcpSessionId")
 
