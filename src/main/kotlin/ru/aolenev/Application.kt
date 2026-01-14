@@ -15,11 +15,12 @@ import ru.aolenev.model.HelpRequest
 import ru.aolenev.model.McpToolsRequest
 import ru.aolenev.model.SinglePrompt
 import ru.aolenev.services.*
+import java.math.BigDecimal
 
 private val claude: ClaudeService by context.instance()
 private val yandex: GptService by context.instance(tag = "yandex")
 private val openai: GptService by context.instance(tag = "openai")
-private val mcpService: McpService by context.instance()
+private val mcpService: CommonMcpService by context.instance()
 private val turboMcpServer: TurboMcpServer by context.instance()
 private val cronJobService: CronJobService by context.instance()
 private val ollamaRagService: OllamaRagService by context.instance()
@@ -130,5 +131,16 @@ private fun Routing.routes() {
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot process help request"))
+    }
+
+    post("/make-review") {
+        val response = claude.reviewPullRequest(
+            owner = "aolenev",
+            repo = "ai-advent-challenge-5",
+            minSimilarity = BigDecimal(0.7)
+        )
+        if (response != null) {
+            call.respond(HttpStatusCode.OK, mapOf("result" to response))
+        } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot process review request"))
     }
 }

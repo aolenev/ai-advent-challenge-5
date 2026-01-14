@@ -11,18 +11,19 @@ import org.slf4j.LoggerFactory
 import ru.aolenev.context
 import ru.aolenev.model.*
 
-class McpService {
+open class CommonMcpService {
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
 
     private val httpClient: HttpClient by context.instance()
     private val config: Config by context.instance()
     private val mapper: ObjectMapper by context.instance()
 
-    private val mcpServerUrl: String by lazy {
+    private val protocolVersion = "2024-11-05"
+
+    protected open val bearerToken: String? = null
+    protected open val mcpServerUrl: String by lazy {
         config.getString("ai-challenge.mcp.serverUrl")
     }
-
-    private val protocolVersion = "2024-11-05"
 
     suspend fun initializeSession(): String? {
         return try {
@@ -48,6 +49,7 @@ class McpService {
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -69,6 +71,7 @@ class McpService {
             )
 
             httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -97,6 +100,7 @@ class McpService {
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -120,6 +124,49 @@ class McpService {
             toolsResponse.result.tools
         } catch (e: Exception) {
             log.error("Error fetching tools list", e)
+            null
+        }
+    }
+
+    suspend fun callTool(mcpSessionId: String, toolName: String, arguments: Map<String, Any>): McpToolsResponse? {
+        return try {
+            log.info("Calling tool '$toolName' for session: $mcpSessionId with arguments: $arguments")
+
+            val toolCallRequest = McpToolsRequest(
+                jsonrpc = "2.0",
+                id = 3,
+                method = "tools/call",
+                params = McpToolsParams(
+                    name = toolName,
+                    arguments = arguments
+                )
+            )
+
+            val response: HttpResponse = httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
+                contentType(ContentType.Application.Json)
+                accept(ContentType.Application.Json)
+                accept(ContentType("text", "event-stream"))
+                header("mcp-session-id", mcpSessionId)
+                setBody(toolCallRequest)
+            }
+
+            // Parse SSE response to extract JSON data
+            val responseText = response.bodyAsText()
+            log.debug("Raw SSE response from tool call: $responseText")
+
+            val jsonData = parseSSEResponse(responseText)
+            if (jsonData == null) {
+                log.error("Failed to parse SSE response from tool call")
+                return null
+            }
+
+            val toolResponse = mapper.readValue(jsonData, McpToolsResponse::class.java)
+            log.info("Successfully called tool '$toolName'")
+
+            toolResponse
+        } catch (e: Exception) {
+            log.error("Error calling tool '$toolName'", e)
             null
         }
     }

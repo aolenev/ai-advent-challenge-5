@@ -32,6 +32,7 @@ class ClaudeService : GptService {
     private val localDatabaseMcpServer: DatabaseMcpServer by context.instance()
     private val localShellMcpServer: ShellMcpServer by context.instance()
     private val ollamaRagService: OllamaRagService by context.instance()
+    private val gitHubMcpService: GitHubMcpService by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -482,6 +483,151 @@ class ClaudeService : GptService {
         }
     }
 
+    suspend fun reviewPullRequest(owner: String, repo: String, minSimilarity: BigDecimal): String? {
+        return try {
+            log.info("Starting PR review for $owner/$repo")
+
+            val sessionId = gitHubMcpService.initializeSession()
+            if (sessionId == null) {
+                log.error("Failed to initialize GitHub MCP session")
+                return "Failed to initialize GitHub MCP session"
+            }
+
+            val githubTools = gitHubMcpService.getTools(sessionId)
+            if (githubTools == null) {
+                log.error("Failed to fetch GitHub tools")
+                return "Failed to fetch GitHub tools"
+            }
+
+            log.info("Fetched ${githubTools.size} GitHub tools: ${githubTools.map { it.name }}")
+
+            // Create initial prompt asking Claude to review the latest PR
+            val initialPrompt = """
+                Please review the latest pull request from the repository $owner/$repo.
+
+                Steps:
+                1. List the pull requests to find the latest one
+                2. Get the details of the latest pull request
+                3. Review the changes and provide feedback
+
+                Focus on compliance with provided architecture documentation, code quality, potential bugs, and improvements.
+            """.trimIndent()
+
+            // Enrich with RAG context
+            val enrichedPrompt = enrichPromptWithRagContext(initialPrompt, minSimilarity)
+
+            // Convert GitHub tools to Claude format
+            val claudeTools = githubTools.map { it.toClaude() }
+
+            // Send initial request to Claude with tools
+            var messages = listOf(ClaudeMessage(role = "user", content = enrichedPrompt))
+            var response = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = messages,
+                    system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
+                    tools = claudeTools,
+                    maxTokens = 4096
+                )
+            ).body<ClaudeResponse>()
+
+            // Handle tool calls in a loop
+            while (response.stopReason == "tool_use") {
+                val result = handleGitHubToolUse(sessionId, response, claudeTools, messages)
+                response = result.response
+                messages = result.messages
+            }
+
+            // Extract final text response
+            @Suppress("UNCHECKED_CAST")
+            val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+            val textContent = contentList
+                .filter { it["type"] == "text" }
+                .map { content ->
+                    mapper.convertValue(content, ClaudeTextContent::class.java)
+                }
+                .firstOrNull()
+
+            textContent?.content ?: "No text response from Claude"
+        } catch (e: Exception) {
+            log.error("Error reviewing pull request", e)
+            "Error reviewing pull request: ${e.message}"
+        }
+    }
+
+    private suspend fun handleGitHubToolUse(
+        sessionId: String,
+        response: ClaudeResponse,
+        tools: List<ClaudeMcpTool>,
+        previousMessages: List<ClaudeMessage>
+    ): GitHubToolUseResult {
+        // Extract all tool uses from response
+        @Suppress("UNCHECKED_CAST")
+        val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+        val tooledContents = contentList
+            .filter { it["type"] == "tool_use" }
+            .map { content ->
+                mapper.convertValue(content, ClaudeTooledContent::class.java)
+            }
+
+        if (tooledContents.isNotEmpty()) {
+            log.info("Claude wants to use ${tooledContents.size} tools: ${tooledContents.map { it.name }}")
+
+            // Call all requested tools and collect results
+            val toolResults = mutableListOf<TooledContent>()
+            for (tooledContent in tooledContents) {
+                log.info("Calling tool: ${tooledContent.name}")
+
+                // Call the GitHub tool via MCP
+                @Suppress("UNCHECKED_CAST")
+                val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
+                val toolResult = gitHubMcpService.callTool(sessionId, tooledContent.name, arguments)
+
+                if (toolResult != null && toolResult.result.content != null) {
+                    log.info("Tool ${tooledContent.name} result: ${toolResult.result.content}")
+
+                    // Add tool result to the list
+                    toolResults.add(
+                        TooledContent(
+                            toolId = tooledContent.id,
+                            content = mapper.writeValueAsString(toolResult.result.content)
+                        )
+                    )
+                } else {
+                    log.error("Tool ${tooledContent.name} returned null or no content")
+                    // Add error result
+                    toolResults.add(
+                        TooledContent(
+                            toolId = tooledContent.id,
+                            content = """{"error": "Tool execution failed or returned no content"}"""
+                        )
+                    )
+                }
+            }
+
+            // Build new messages including all tool results
+            val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+            val userMessage = ClaudeMessage(role = "user", content = toolResults)
+
+            val newMessages = previousMessages + assistantMessage + userMessage
+
+            // Send back to Claude with all tool results
+            val newResponse = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = newMessages,
+                    system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
+                    tools = tools,
+                    maxTokens = 4096
+                )
+            ).body<ClaudeResponse>()
+
+            return GitHubToolUseResult(response = newResponse, messages = newMessages)
+        }
+
+        return GitHubToolUseResult(response = response, messages = previousMessages)
+    }
+
     private suspend fun requestClaude(req: ClaudeRawRequest): HttpResponse {
         return httpClient.post("https://api.anthropic.com/v1/messages") {
             headers {
@@ -566,4 +712,9 @@ private data class ClaudeTooledContent(
     @JsonProperty("id") val id: String,
     @JsonProperty("name") val name: String,
     @JsonProperty("input") val input: Any
+)
+
+private data class GitHubToolUseResult(
+    val response: ClaudeResponse,
+    val messages: List<ClaudeMessage>
 )
