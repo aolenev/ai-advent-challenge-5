@@ -1,0 +1,38 @@
+{
+  "name": "github_list_pull_requests",
+  "description": "List of pull requests",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "state": {
+        "type": "string",
+        "description": "Filter pull requests by state"
+      }
+    },
+    "required": ["state"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "pullRequests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "number": {
+              "type": "number",
+              "description": "Pull request number"
+            },
+            "state": {
+              "type": "string",
+              "description": "State of pull request"
+            }
+          },
+          "required": ["number", "state"]
+        },
+        "description": "List of pull requests"
+      }
+    },
+    "required": ["pullRequests"]
+  }
+}

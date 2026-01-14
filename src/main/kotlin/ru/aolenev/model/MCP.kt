@@ -69,7 +69,7 @@ data class McpToolsResult(
 data class McpTool(
     @JsonProperty("name") val name: String,
     @JsonProperty("description") val description: String?,
-    @JsonProperty("inputSchema") val inputSchema: Any,
+    @JsonProperty("inputSchema") val inputSchema: Any?,
     @JsonProperty("outputSchema") val outputSchema: Any?
 )
 
@@ -103,4 +103,9 @@ data class ExecuteShellCommandToolInput(
 
 data class ExecuteShellCommandToolOutput(
     @JsonProperty("stdout") val stdout: String
+)
+
+data class GithubPullRequestInfo(
+    @JsonProperty("state") val state: String,
+    @JsonProperty("number") val number: Int
 )

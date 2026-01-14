@@ -128,49 +128,6 @@ open class CommonMcpService {
         }
     }
 
-    suspend fun callTool(mcpSessionId: String, toolName: String, arguments: Map<String, Any>): McpToolsResponse? {
-        return try {
-            log.info("Calling tool '$toolName' for session: $mcpSessionId with arguments: $arguments")
-
-            val toolCallRequest = McpToolsRequest(
-                jsonrpc = "2.0",
-                id = 3,
-                method = "tools/call",
-                params = McpToolsParams(
-                    name = toolName,
-                    arguments = arguments
-                )
-            )
-
-            val response: HttpResponse = httpClient.post(mcpServerUrl) {
-                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
-                contentType(ContentType.Application.Json)
-                accept(ContentType.Application.Json)
-                accept(ContentType("text", "event-stream"))
-                header("mcp-session-id", mcpSessionId)
-                setBody(toolCallRequest)
-            }
-
-            // Parse SSE response to extract JSON data
-            val responseText = response.bodyAsText()
-            log.debug("Raw SSE response from tool call: $responseText")
-
-            val jsonData = parseSSEResponse(responseText)
-            if (jsonData == null) {
-                log.error("Failed to parse SSE response from tool call")
-                return null
-            }
-
-            val toolResponse = mapper.readValue(jsonData, McpToolsResponse::class.java)
-            log.info("Successfully called tool '$toolName'")
-
-            toolResponse
-        } catch (e: Exception) {
-            log.error("Error calling tool '$toolName'", e)
-            null
-        }
-    }
-
     private fun parseSSEResponse(sseText: String): String? {
         // SSE format: lines starting with "data: " contain the JSON payload
         val lines = sseText.lines()
