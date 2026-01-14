@@ -1,0 +1,41 @@
+{
+  "name": "github_list_bug_issues",
+  "description": "List all open issues with label 'bug' from a GitHub repository. Use it to check if user has an issue because of bug",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "number": {
+              "type": "number",
+              "description": "Issue number"
+            },
+            "title": {
+              "type": "string",
+              "description": "Issue title"
+            },
+            "state": {
+              "type": "string",
+              "description": "Issue state (open/closed)"
+            },
+            "labels": {
+              "type": "array",
+              "description": "Labels attached to the issue"
+            }
+          },
+          "required": ["number", "title", "state"]
+        },
+        "description": "List of bug issues"
+      }
+    },
+    "required": ["issues"]
+  }
+}

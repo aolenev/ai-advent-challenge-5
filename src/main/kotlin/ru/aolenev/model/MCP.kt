@@ -109,3 +109,14 @@ data class GithubPullRequestInfo(
     @JsonProperty("state") val state: String,
     @JsonProperty("number") val number: Int
 )
+
+data class GithubIssueInfo(
+    @JsonProperty("number") val number: Int,
+    @JsonProperty("title") val title: String,
+    @JsonProperty("state") val state: String,
+    @JsonProperty("labels") val labels: List<IssueLabel>
+)
+
+data class IssueLabel(
+    @JsonProperty("name") val name: String
+)

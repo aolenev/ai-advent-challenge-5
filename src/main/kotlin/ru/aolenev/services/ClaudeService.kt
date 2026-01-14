@@ -459,24 +459,50 @@ class ClaudeService : GptService {
             } else null
         }
 
-    suspend fun helpWithRag(question: String, minSimilarity: BigDecimal): String? {
+    suspend fun helpWithRag(question: String, minSimilarity: BigDecimal, owner: String = "aolenev", repo: String = "ai-advent-challenge-5"): String? {
         try {
             log.info("Processing help request with RAG for question: $question")
 
             // Enrich the question with RAG context
             val enrichedPrompt = enrichPromptWithRagContext(question, minSimilarity)
 
-            // Send to Claude
-            val response = requestClaude(
+            // Get GitHub tools
+            val githubTools = gitHubMcpService.getTools()
+            val claudeTools = githubTools.map { it.toClaude() }
+
+            log.info("Available tools for /help: ${githubTools.map { it.name }}")
+
+            // Send to Claude with tools available
+            val systemPrompt = "You are a helpful assistant. Answer the user's question based on the provided context from the knowledge base. If the context doesn't contain relevant information, you can use available tools to fetch additional information. If tools are also not helpful, say so clearly."
+            var messages = listOf(ClaudeMessage(role = "user", content = enrichedPrompt))
+            var response = requestClaude(
                 req = ClaudeRawRequest(
                     model = sonnet45,
-                    messages = listOf(ClaudeMessage(role = "user", content = enrichedPrompt)),
-                    system = "You are a helpful assistant. Answer the user's question based on the provided context from the knowledge base. If the context doesn't contain relevant information, say so clearly.",
+                    messages = messages,
+                    system = systemPrompt,
+                    tools = claudeTools,
                     maxTokens = 4096
                 )
-            ).body<ClaudeSimpleResponse>()
+            ).body<ClaudeResponse>()
 
-            return response.content.first().content
+            // Handle tool calls in a loop (similar to reviewPullRequest)
+            while (response.stopReason == "tool_use") {
+                val result = handleGitHubToolUse(owner, repo, response, claudeTools, systemPrompt, messages)
+                response = result.response
+                messages = result.messages
+            }
+
+            // Extract final text response
+            @Suppress("UNCHECKED_CAST")
+            val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
+            val textContent = contentList
+                .filter { it["type"] == "text" }
+                .map { content ->
+                    mapper.convertValue(content, ClaudeTextContent::class.java)
+                }
+                .firstOrNull()
+
+            return textContent?.content ?: "No response generated"
         } catch (e: Exception) {
             log.error("Error processing help request", e)
             return null
@@ -510,12 +536,13 @@ class ClaudeService : GptService {
             val claudeTools = githubTools.map { it.toClaude() }
 
             // Send initial request to Claude with tools
+            val systemPrompt = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback."
             var messages = listOf(ClaudeMessage(role = "user", content = enrichedPrompt))
             var response = requestClaude(
                 req = ClaudeRawRequest(
                     model = sonnet45,
                     messages = messages,
-                    system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
+                    system = systemPrompt,
                     tools = claudeTools,
                     maxTokens = 4096
                 )
@@ -523,7 +550,7 @@ class ClaudeService : GptService {
 
             // Handle tool calls in a loop
             while (response.stopReason == "tool_use") {
-                val result = handleGitHubToolUse(owner, repo, response, claudeTools, messages)
+                val result = handleGitHubToolUse(owner, repo, response, claudeTools, systemPrompt, messages)
                 response = result.response
                 messages = result.messages
             }
@@ -549,6 +576,7 @@ class ClaudeService : GptService {
         owner: String, repo: String,
         response: ClaudeResponse,
         tools: List<ClaudeMcpTool>,
+        systemPrompt: String?,
         previousMessages: List<ClaudeMessage>
     ): GitHubToolUseResult {
         // Extract all tool uses from response
@@ -610,7 +638,7 @@ class ClaudeService : GptService {
                 req = ClaudeRawRequest(
                     model = sonnet45,
                     messages = newMessages,
-                    system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
+                    system = systemPrompt,
                     tools = tools,
                     maxTokens = 4096
                 )

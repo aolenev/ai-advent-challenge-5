@@ -9,6 +9,7 @@ import io.ktor.http.*
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import ru.aolenev.context
+import ru.aolenev.model.GithubIssueInfo
 import ru.aolenev.model.GithubPullRequestInfo
 import ru.aolenev.model.McpTool
 import ru.aolenev.model.McpToolsResponse
@@ -36,7 +37,13 @@ class GitHubMcpService {
 
             val getDiffTool = mapper.readValue(getDiffToolJson, McpTool::class.java)
 
-            listOf(listPullRequestsTool, getDiffTool)
+            val listBugIssuesToolJson = this::class.java
+                .getResource("/tool-templates/github_list_bug_issues.json")!!
+                .readText()
+
+            val listBugIssuesTool = mapper.readValue(listBugIssuesToolJson, McpTool::class.java)
+
+            listOf(listPullRequestsTool, getDiffTool, listBugIssuesTool)
         } catch (e: Exception) {
             log.error("Error loading tools", e)
             throw e
@@ -75,6 +82,22 @@ class GitHubMcpService {
                         result = McpToolsResult(
                             content = mapOf("pullRequests" to response),
                             isError = true
+                        )
+                    )
+                }
+
+                "github_list_bug_issues" -> {
+                    val response = httpClient.get("$githubApiUrl/repos/$owner/$repo/issues?state=open&labels=bug") {
+                        bearerAuth(bearerToken)
+                        header("Accept", "application/vnd.github+json")
+                    }.body<List<GithubIssueInfo>>()
+
+                    McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = mapOf("issues" to response),
+                            isError = false
                         )
                     )
                 }
