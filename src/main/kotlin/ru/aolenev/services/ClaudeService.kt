@@ -487,17 +487,7 @@ class ClaudeService : GptService {
         return try {
             log.info("Starting PR review for $owner/$repo")
 
-            val sessionId = gitHubMcpService.initializeSession()
-            if (sessionId == null) {
-                log.error("Failed to initialize GitHub MCP session")
-                return "Failed to initialize GitHub MCP session"
-            }
-
-            val githubTools = gitHubMcpService.getTools(sessionId)
-            if (githubTools == null) {
-                log.error("Failed to fetch GitHub tools")
-                return "Failed to fetch GitHub tools"
-            }
+            val githubTools = gitHubMcpService.getTools()
 
             log.info("Fetched ${githubTools.size} GitHub tools: ${githubTools.map { it.name }}")
 
@@ -506,11 +496,11 @@ class ClaudeService : GptService {
                 Please review the latest pull request from the repository $owner/$repo.
 
                 Steps:
-                1. List the pull requests to find the latest one
-                2. Get the details of the latest pull request
+                1. List the open pull requests to find the latest one
+                2. Get the details of the latest open pull request
                 3. Review the changes and provide feedback
 
-                Focus on compliance with provided architecture documentation, code quality, potential bugs, and improvements.
+                Focus on compliance with provided architecture patterns for different layers, code quality, potential bugs, and improvements.
             """.trimIndent()
 
             // Enrich with RAG context
@@ -533,7 +523,7 @@ class ClaudeService : GptService {
 
             // Handle tool calls in a loop
             while (response.stopReason == "tool_use") {
-                val result = handleGitHubToolUse(sessionId, response, claudeTools, messages)
+                val result = handleGitHubToolUse(owner, repo, response, claudeTools, messages)
                 response = result.response
                 messages = result.messages
             }
@@ -556,7 +546,7 @@ class ClaudeService : GptService {
     }
 
     private suspend fun handleGitHubToolUse(
-        sessionId: String,
+        owner: String, repo: String,
         response: ClaudeResponse,
         tools: List<ClaudeMcpTool>,
         previousMessages: List<ClaudeMessage>
@@ -581,7 +571,11 @@ class ClaudeService : GptService {
                 // Call the GitHub tool via MCP
                 @Suppress("UNCHECKED_CAST")
                 val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
-                val toolResult = gitHubMcpService.callTool(sessionId, tooledContent.name, arguments)
+                val toolResult = gitHubMcpService.callTool(
+                    toolName = tooledContent.name,
+                    arguments = arguments,
+                    owner = owner,
+                    repo = repo)
 
                 if (toolResult != null && toolResult.result.content != null) {
                     log.info("Tool ${tooledContent.name} result: ${toolResult.result.content}")

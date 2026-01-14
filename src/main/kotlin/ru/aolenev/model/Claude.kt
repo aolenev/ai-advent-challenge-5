@@ -1,5 +1,6 @@
 package ru.aolenev.model
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
@@ -80,10 +81,11 @@ fun MessageType.toClaudeRole(): String = when (this) {
     MessageType.ASSISTANT -> "assistant"
 }
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 data class ClaudeMcpTool(
     @JsonProperty("name") val name: String,
     @JsonProperty("description") val description: String?,
-    @JsonProperty("input_schema") val inputSchema: Any
+    @JsonProperty("input_schema") val inputSchema: Any?
 )
 
 fun McpTool.toClaude(): ClaudeMcpTool = ClaudeMcpTool(

@@ -1,0 +1,24 @@
+{
+  "name": "github_get_diff",
+  "description": "Diff for pull request",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "number": {
+        "type": "number",
+        "description": "Pull request number"
+      }
+    },
+    "required": ["number"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "diff": {
+        "type": "string",
+        "description": "Diff of pull request"
+      }
+    },
+    "required": ["diff"]
+  }
+}
