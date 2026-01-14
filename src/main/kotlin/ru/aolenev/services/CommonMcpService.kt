@@ -18,13 +18,12 @@ open class CommonMcpService {
     private val config: Config by context.instance()
     private val mapper: ObjectMapper by context.instance()
 
-    private val mcpServerUrl: String by lazy {
-        config.getString("ai-challenge.mcp.serverUrl")
-    }
-
     private val protocolVersion = "2024-11-05"
 
     protected open val bearerToken: String? = null
+    protected open val mcpServerUrl: String by lazy {
+        config.getString("ai-challenge.mcp.serverUrl")
+    }
 
     suspend fun initializeSession(): String? {
         return try {
@@ -50,7 +49,7 @@ open class CommonMcpService {
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
-                bearerToken?.let { token -> bearerAuth(token) }
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -72,6 +71,7 @@ open class CommonMcpService {
             )
 
             httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -100,6 +100,7 @@ open class CommonMcpService {
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))
@@ -142,6 +143,7 @@ open class CommonMcpService {
             )
 
             val response: HttpResponse = httpClient.post(mcpServerUrl) {
+                bearerToken?.let { token -> header("Authorization", "Bearer $token") }
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
                 accept(ContentType("text", "event-stream"))

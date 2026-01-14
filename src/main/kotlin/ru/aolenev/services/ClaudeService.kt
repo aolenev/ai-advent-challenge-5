@@ -533,8 +533,9 @@ class ClaudeService : GptService {
 
             // Handle tool calls in a loop
             while (response.stopReason == "tool_use") {
-                response = handleGitHubToolUse(sessionId, response, claudeTools, messages)
-                messages = extractMessagesFromResponse(response, messages)
+                val result = handleGitHubToolUse(sessionId, response, claudeTools, messages)
+                response = result.response
+                messages = result.messages
             }
 
             // Extract final text response
@@ -559,58 +560,72 @@ class ClaudeService : GptService {
         response: ClaudeResponse,
         tools: List<ClaudeMcpTool>,
         previousMessages: List<ClaudeMessage>
-    ): ClaudeResponse {
-        // Extract tool use from response
+    ): GitHubToolUseResult {
+        // Extract all tool uses from response
         @Suppress("UNCHECKED_CAST")
         val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
-        val tooledContent = contentList
+        val tooledContents = contentList
             .filter { it["type"] == "tool_use" }
             .map { content ->
                 mapper.convertValue(content, ClaudeTooledContent::class.java)
             }
-            .firstOrNull()
 
-        if (tooledContent != null) {
-            log.info("Claude wants to use tool: ${tooledContent.name}")
+        if (tooledContents.isNotEmpty()) {
+            log.info("Claude wants to use ${tooledContents.size} tools: ${tooledContents.map { it.name }}")
 
-            // Call the GitHub tool via MCP
-            @Suppress("UNCHECKED_CAST")
-            val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
-            val toolResult = gitHubMcpService.callTool(sessionId, tooledContent.name, arguments)
+            // Call all requested tools and collect results
+            val toolResults = mutableListOf<TooledContent>()
+            for (tooledContent in tooledContents) {
+                log.info("Calling tool: ${tooledContent.name}")
 
-            if (toolResult != null && toolResult.result.content != null) {
-                log.info("Tool result: ${toolResult.result.content}")
+                // Call the GitHub tool via MCP
+                @Suppress("UNCHECKED_CAST")
+                val arguments = mapper.convertValue(tooledContent.input, Map::class.java) as Map<String, Any>
+                val toolResult = gitHubMcpService.callTool(sessionId, tooledContent.name, arguments)
 
-                // Build new messages including the tool result
-                val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
-                val toolResultContent = TooledContent(
-                    toolId = tooledContent.id,
-                    content = mapper.writeValueAsString(toolResult.result.content)
-                )
-                val userMessage = ClaudeMessage(role = "user", content = listOf(toolResultContent))
+                if (toolResult != null && toolResult.result.content != null) {
+                    log.info("Tool ${tooledContent.name} result: ${toolResult.result.content}")
 
-                val newMessages = previousMessages + assistantMessage + userMessage
-
-                // Send back to Claude
-                return requestClaude(
-                    req = ClaudeRawRequest(
-                        model = sonnet45,
-                        messages = newMessages,
-                        system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
-                        tools = tools,
-                        maxTokens = 4096
+                    // Add tool result to the list
+                    toolResults.add(
+                        TooledContent(
+                            toolId = tooledContent.id,
+                            content = mapper.writeValueAsString(toolResult.result.content)
+                        )
                     )
-                ).body<ClaudeResponse>()
+                } else {
+                    log.error("Tool ${tooledContent.name} returned null or no content")
+                    // Add error result
+                    toolResults.add(
+                        TooledContent(
+                            toolId = tooledContent.id,
+                            content = """{"error": "Tool execution failed or returned no content"}"""
+                        )
+                    )
+                }
             }
+
+            // Build new messages including all tool results
+            val assistantMessage = ClaudeMessage(role = "assistant", content = contentList)
+            val userMessage = ClaudeMessage(role = "user", content = toolResults)
+
+            val newMessages = previousMessages + assistantMessage + userMessage
+
+            // Send back to Claude with all tool results
+            val newResponse = requestClaude(
+                req = ClaudeRawRequest(
+                    model = sonnet45,
+                    messages = newMessages,
+                    system = "You are a code reviewer. Use the available GitHub tools to fetch and review pull requests. Provide constructive feedback.",
+                    tools = tools,
+                    maxTokens = 4096
+                )
+            ).body<ClaudeResponse>()
+
+            return GitHubToolUseResult(response = newResponse, messages = newMessages)
         }
 
-        return response
-    }
-
-    private fun extractMessagesFromResponse(response: ClaudeResponse, previousMessages: List<ClaudeMessage>): List<ClaudeMessage> {
-        @Suppress("UNCHECKED_CAST")
-        val contentList = mapper.convertValue(response.content, List::class.java) as List<Map<String, Any>>
-        return previousMessages + ClaudeMessage(role = "assistant", content = contentList)
+        return GitHubToolUseResult(response = response, messages = previousMessages)
     }
 
     private suspend fun requestClaude(req: ClaudeRawRequest): HttpResponse {
@@ -697,4 +712,9 @@ private data class ClaudeTooledContent(
     @JsonProperty("id") val id: String,
     @JsonProperty("name") val name: String,
     @JsonProperty("input") val input: Any
+)
+
+private data class GitHubToolUseResult(
+    val response: ClaudeResponse,
+    val messages: List<ClaudeMessage>
 )
