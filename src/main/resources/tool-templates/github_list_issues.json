@@ -1,0 +1,84 @@
+{
+  "name": "github_list_issues",
+  "description": "List all issues from a GitHub repository with optional filtering by state (open/closed/all), labels, and priority. Use this tool to search and filter issues based on various criteria.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "state": {
+        "type": "string",
+        "description": "Filter by issue state: 'open', 'closed', or 'all'. Defaults to 'all'",
+        "enum": ["open", "closed", "all"]
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Filter by labels. Returns issues that have ALL specified labels. Example: ['bug', 'high-priority']"
+      },
+      "priority": {
+        "type": "string",
+        "description": "Filter by priority label. Common values: 'high', 'medium', 'low', 'P0', 'P1', 'P2'. Searches for labels containing this text."
+      }
+    },
+    "required": []
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "number": {
+              "type": "number",
+              "description": "Issue number"
+            },
+            "title": {
+              "type": "string",
+              "description": "Issue title"
+            },
+            "state": {
+              "type": "string",
+              "description": "Issue state (open/closed)"
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Label name"
+                  }
+                },
+                "required": ["name"]
+              },
+              "description": "Labels attached to the issue"
+            },
+            "body": {
+              "type": "string",
+              "description": "Issue description/body"
+            },
+            "created_at": {
+              "type": "string",
+              "description": "Issue creation timestamp"
+            },
+            "updated_at": {
+              "type": "string",
+              "description": "Issue last update timestamp"
+            }
+          },
+          "required": ["number", "title", "state", "labels"]
+        },
+        "description": "List of issues matching the filter criteria"
+      },
+      "total_count": {
+        "type": "number",
+        "description": "Total number of issues returned"
+      }
+    },
+    "required": ["issues", "total_count"]
+  }
+}

@@ -114,9 +114,60 @@ data class GithubIssueInfo(
     @JsonProperty("number") val number: Int,
     @JsonProperty("title") val title: String,
     @JsonProperty("state") val state: String,
-    @JsonProperty("labels") val labels: List<IssueLabel>
+    @JsonProperty("labels") val labels: List<IssueLabel>,
+    @JsonProperty("body") val body: String? = null,
+    @JsonProperty("created_at") val createdAt: String? = null,
+    @JsonProperty("updated_at") val updatedAt: String? = null
 )
 
 data class IssueLabel(
     @JsonProperty("name") val name: String
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GithubListIssuesToolInput(
+    @JsonProperty("state") val state: String? = "all",
+    @JsonProperty("labels") val labels: List<String>? = null,
+    @JsonProperty("priority") val priority: String? = null
+)
+
+data class GithubListIssuesToolOutput(
+    @JsonProperty("issues") val issues: List<GithubIssueInfo>,
+    @JsonProperty("total_count") val totalCount: Int
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GithubCreateIssueToolInput(
+    @JsonProperty("title") val title: String,
+    @JsonProperty("description") val description: String,
+    @JsonProperty("priority") val priority: String? = null,
+    @JsonProperty("labels") val labels: List<String>? = null
+)
+
+data class GithubCreateIssueToolOutput(
+    @JsonProperty("number") val number: Int,
+    @JsonProperty("url") val url: String,
+    @JsonProperty("title") val title: String,
+    @JsonProperty("state") val state: String,
+    @JsonProperty("labels") val labels: List<IssueLabel>,
+    @JsonProperty("created_at") val createdAt: String
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GithubUpdateIssueToolInput(
+    @JsonProperty("issue_number") val issueNumber: Int,
+    @JsonProperty("title") val title: String? = null,
+    @JsonProperty("description") val description: String? = null,
+    @JsonProperty("state") val state: String? = null,
+    @JsonProperty("priority") val priority: String? = null,
+    @JsonProperty("labels") val labels: List<String>? = null
+)
+
+data class GithubUpdateIssueToolOutput(
+    @JsonProperty("number") val number: Int,
+    @JsonProperty("url") val url: String,
+    @JsonProperty("title") val title: String,
+    @JsonProperty("state") val state: String,
+    @JsonProperty("labels") val labels: List<IssueLabel>,
+    @JsonProperty("updated_at") val updatedAt: String
 )

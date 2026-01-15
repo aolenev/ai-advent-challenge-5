@@ -61,10 +61,14 @@ curl -X POST http://localhost:8080/help \
 - `github_list_pull_requests` - List pull requests by state
 - `github_get_diff` - Get diff for a specific PR
 - `github_list_bug_issues` - List all open issues with label "bug"
+- `github_list_issues` - List all issues with optional filtering by state (open/closed/all), labels, and priority
+- `github_create_issue` - Create a new issue with title, description, priority, and labels
 
 ### When does Claude use GitHub tools?
 Claude intelligently decides when to use tools based on your question:
-- Question about bugs/issues → Uses `github_list_bug_issues`
+- Question about bugs/issues → Uses `github_list_bug_issues` or `github_list_issues`
+- Question about specific issue filters (state, labels, priority) → Uses `github_list_issues`
+- Request to create an issue → Uses `github_create_issue`
 - Question about PRs → Uses `github_list_pull_requests` or `github_get_diff`
 - Question about architecture/code patterns → Uses RAG context only
 
@@ -176,7 +180,7 @@ curl -X POST http://localhost:8080/tooled-conversation \
 ```
 
 ### What tools are available?
-- **GitHub Tools**: List PRs, get diffs, list bug issues
+- **GitHub Tools**: List PRs, get diffs, list bug issues, list all issues with filters, create issues
 - **Database Tools**: Query fueling statistics
 - **Shell Tools**: Execute shell commands (use carefully)
 
@@ -339,6 +343,44 @@ curl -X POST http://localhost:8080/rag/process \
   }'
 ```
 
+### Example 5: List issues with filters
+```bash
+# List all open issues with high priority
+curl -X POST http://localhost:8080/help \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Show me all open issues with high priority",
+    "minSimilarity": 0.7
+  }'
+
+# List closed issues with specific labels
+curl -X POST http://localhost:8080/help \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What are the closed issues labeled as bug and documentation?",
+    "minSimilarity": 0.7
+  }'
+```
+
+### Example 6: Create a new issue
+```bash
+# Create a bug report
+curl -X POST http://localhost:8080/help \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Create a new issue titled \"Fix authentication error\" with description \"Users cannot log in after password reset\" with high priority and bug label",
+    "minSimilarity": 0.7
+  }'
+
+# Create a feature request
+curl -X POST http://localhost:8080/help \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Create a feature request titled \"Add dark mode support\" with medium priority",
+    "minSimilarity": 0.7
+  }'
+```
+
 ---
 
 ## Support
@@ -353,3 +395,7 @@ For issues or questions:
 - **Claude Model**: claude-sonnet-4-5-20250929
 - **Ollama**: Required for embeddings
 - **PostgreSQL**: Required with pgvector extension
+
+
+Create bug with medium priority: documentation is not complete
+I've updated documentation, so please close related bug

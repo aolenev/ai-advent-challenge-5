@@ -1,0 +1,70 @@
+{
+  "name": "github_create_issue",
+  "description": "Create a new issue in a GitHub repository with title, description, priority, and labels. Use this tool when you need to report bugs, request features, or create tasks.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "The title of the issue. Should be concise and descriptive."
+      },
+      "description": {
+        "type": "string",
+        "description": "The detailed description/body of the issue. Supports markdown formatting."
+      },
+      "priority": {
+        "type": "string",
+        "description": "Priority level: 'high', 'medium', or 'low'. This will be added as a label.",
+        "enum": ["high", "medium", "low"]
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Additional labels to apply to the issue. Example: ['bug', 'documentation', 'help-wanted']"
+      }
+    },
+    "required": ["title", "description"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "number": {
+        "type": "number",
+        "description": "The newly created issue number"
+      },
+      "url": {
+        "type": "string",
+        "description": "The URL of the created issue"
+      },
+      "title": {
+        "type": "string",
+        "description": "The title of the created issue"
+      },
+      "state": {
+        "type": "string",
+        "description": "The state of the created issue (typically 'open')"
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Label name"
+            }
+          },
+          "required": ["name"]
+        },
+        "description": "Labels applied to the issue"
+      },
+      "created_at": {
+        "type": "string",
+        "description": "Issue creation timestamp"
+      }
+    },
+    "required": ["number", "url", "title", "state"]
+  }
+}

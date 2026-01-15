@@ -1,0 +1,79 @@
+{
+  "name": "github_update_issue",
+  "description": "Update an existing GitHub issue. Can update the title, description, state (open/closed), priority, and labels. Use this tool to modify issue details, close issues, or update their status.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "issue_number": {
+        "type": "number",
+        "description": "The issue number to update. This is required to identify which issue to modify."
+      },
+      "title": {
+        "type": "string",
+        "description": "New title for the issue. If not provided, the title remains unchanged."
+      },
+      "description": {
+        "type": "string",
+        "description": "New description/body for the issue. Supports markdown formatting. If not provided, the description remains unchanged."
+      },
+      "state": {
+        "type": "string",
+        "description": "Change the issue state to 'open' or 'closed'.",
+        "enum": ["open", "closed"]
+      },
+      "priority": {
+        "type": "string",
+        "description": "Update priority level: 'high', 'medium', or 'low'. This will update/add the priority label.",
+        "enum": ["high", "medium", "low"]
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "New set of labels to apply to the issue. This replaces all existing labels (except priority if specified separately). Example: ['bug', 'documentation']"
+      }
+    },
+    "required": ["issue_number"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "number": {
+        "type": "number",
+        "description": "The updated issue number"
+      },
+      "url": {
+        "type": "string",
+        "description": "The URL of the updated issue"
+      },
+      "title": {
+        "type": "string",
+        "description": "The current title of the issue"
+      },
+      "state": {
+        "type": "string",
+        "description": "The current state of the issue (open/closed)"
+      },
+      "labels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Label name"
+            }
+          },
+          "required": ["name"]
+        },
+        "description": "Current labels on the issue"
+      },
+      "updated_at": {
+        "type": "string",
+        "description": "Issue update timestamp"
+      }
+    },
+    "required": ["number", "url", "title", "state"]
+  }
+}
