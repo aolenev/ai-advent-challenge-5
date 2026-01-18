@@ -33,6 +33,8 @@ class ClaudeService : GptService {
     private val localShellMcpServer: ShellMcpServer by context.instance()
     private val ollamaRagService: OllamaRagService by context.instance()
     private val gitHubMcpService: GitHubMcpService by context.instance()
+    private val gitlabMcpService: GitlabMcpService by context.instance()
+    private val cronJobService: CronJobService by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -305,7 +307,9 @@ class ClaudeService : GptService {
             val turboTools = localTurboMcpServer.listTools().result.tools ?: emptyList()
             val databaseTools = localDatabaseMcpServer.listTools().result.tools ?: emptyList()
             val shellTools = localShellMcpServer.listTools().result.tools ?: emptyList()
-            val allTools = (turboTools + databaseTools + shellTools).map { it.toClaude() }
+            val gitlabTools = gitlabMcpService.getTools()
+            val cronJobTools = cronJobService.getTools()
+            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + cronJobTools).map { it.toClaude() }
 
             var response = requestClaude(
                 req = ClaudeRawRequest(
@@ -384,6 +388,24 @@ class ClaudeService : GptService {
                         arguments = arguments
                     )
                 )
+                "gitlab_get_latest_pipeline", "gitlab_get_pipeline_jobs", "gitlab_run_job" ->
+                    gitlabMcpService.callTool(tooledContent.name, arguments) ?: McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = mapOf("error" to "GitLab tool returned null"),
+                            isError = true
+                        )
+                    )
+                "schedule_qa_deployment", "stop_deployment_scheduling" ->
+                    cronJobService.callTool(tooledContent.name, arguments) ?: McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = mapOf("error" to "CronJob tool returned null"),
+                            isError = true
+                        )
+                    )
                 else -> {
                     log.error("Unknown tool: ${tooledContent.name}")
                     McpToolsResponse(

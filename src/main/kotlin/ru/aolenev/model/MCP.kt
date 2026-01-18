@@ -171,3 +171,70 @@ data class GithubUpdateIssueToolOutput(
     @JsonProperty("labels") val labels: List<IssueLabel>,
     @JsonProperty("updated_at") val updatedAt: String
 )
+
+// GitLab MCP Tool Models
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GitlabGetLatestPipelineToolInput(
+    @JsonProperty("project_id") val projectId: String
+)
+
+data class GitlabPipelineInfo(
+    @JsonProperty("id") val id: Int,
+    @JsonProperty("project_id") val projectId: Int,
+    @JsonProperty("name") val name: String? = null,
+    @JsonProperty("status") val status: String? = null,
+    @JsonProperty("ref") val ref: String? = null,
+    @JsonProperty("created_at") val createdAt: String? = null
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GitlabGetPipelineJobsToolInput(
+    @JsonProperty("project_id") val projectId: String,
+    @JsonProperty("pipeline_id") val pipelineId: Int
+)
+
+data class GitlabJobInfo(
+    @JsonProperty("id") val id: Int,
+    @JsonProperty("name") val name: String,
+    @JsonProperty("status") val status: String,
+    @JsonProperty("stage") val stage: String? = null,
+    @JsonProperty("created_at") val createdAt: String? = null
+)
+
+data class GitlabGetPipelineJobsToolOutput(
+    @JsonProperty("jobs") val jobs: List<GitlabJobInfo>,
+    @JsonProperty("total_count") val totalCount: Int
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class GitlabRunJobToolInput(
+    @JsonProperty("project_id") val projectId: String,
+    @JsonProperty("job_id") val jobId: Int
+)
+
+data class GitlabRunJobToolOutput(
+    @JsonProperty("id") val id: Int,
+    @JsonProperty("name") val name: String,
+    @JsonProperty("status") val status: String,
+    @JsonProperty("stage") val stage: String? = null,
+    @JsonProperty("started_at") val startedAt: String? = null,
+    @JsonProperty("web_url") val webUrl: String? = null
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class ScheduleQaDeploymentToolInput(
+    @JsonProperty("project_id") val projectId: String
+)
+
+data class ScheduleQaDeploymentToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("message") val message: String,
+    @JsonProperty("project_id") val projectId: String? = null
+)
+
+data class StopDeploymentSchedulingToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("message") val message: String,
+    @JsonProperty("stopped_count") val stoppedCount: Int
+)
