@@ -56,6 +56,11 @@ data class HelpRequest(
     val minSimilarity: BigDecimal = BigDecimal(0.7)
 )
 
+data class LocalModelPrompt(
+    val prompt: String,
+    val model: String = "qwen2.5:3b"
+)
+
 data class FiniteChatResponse(
     val response: String,
     val isChatFinished: Boolean

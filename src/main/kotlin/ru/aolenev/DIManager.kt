@@ -28,6 +28,7 @@ import ru.aolenev.services.GitHubMcpService
 import ru.aolenev.services.GitlabMcpService
 import ru.aolenev.services.GptService
 import ru.aolenev.services.OllamaRagService
+import ru.aolenev.services.OllamaService
 import ru.aolenev.services.ShellMcpServer
 import ru.aolenev.services.TurboMcpServer
 import ru.aolenev.services.CommonMcpService
@@ -102,6 +103,7 @@ val serviceModule = DI.Module("service") {
     bind<TurboApiService>() with singleton { TurboApiService() }
     bind<CronJobService>() with singleton { CronJobService() }
     bind<OllamaRagService>() with singleton { OllamaRagService() }
+    bind<OllamaService>() with singleton { OllamaService() }
 }
 
 val context =

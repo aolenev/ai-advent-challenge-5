@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import org.kodein.di.instance
 import ru.aolenev.model.ChatPrompt
 import ru.aolenev.model.HelpRequest
+import ru.aolenev.model.LocalModelPrompt
 import ru.aolenev.model.McpToolsRequest
 import ru.aolenev.model.SinglePrompt
 import ru.aolenev.services.*
@@ -24,6 +25,7 @@ private val mcpService: CommonMcpService by context.instance()
 private val turboMcpServer: TurboMcpServer by context.instance()
 private val cronJobService: CronJobService by context.instance()
 private val ollamaRagService: OllamaRagService by context.instance()
+private val ollamaService: OllamaService by context.instance()
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -142,5 +144,12 @@ private fun Routing.routes() {
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot process review request"))
+    }
+
+    post("/local-models") { req: LocalModelPrompt ->
+        val response = ollamaService.callModel(prompt = req.prompt, model = req.model)
+        if (response != null) {
+            call.respond(HttpStatusCode.OK, mapOf("result" to response))
+        } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to local Ollama"))
     }
 }
