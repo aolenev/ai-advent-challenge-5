@@ -1,0 +1,32 @@
+{
+  "name": "schedule_qa_deployment",
+  "description": "Schedule periodic QA deployment automation for a GitLab project. This tool creates a background task that periodically checks if the latest pipeline's 'build' job has completed successfully, and if so, automatically triggers the 'deploy-qa' job.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "description": "The GitLab project ID or URL-encoded path (e.g., 'mygroup/myproject' or '12345'). This identifies which project's pipeline to monitor for automated QA deployment."
+      }
+    },
+    "required": ["project_id"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean",
+        "description": "Whether the scheduling was successful"
+      },
+      "message": {
+        "type": "string",
+        "description": "A message describing the result of the scheduling operation"
+      },
+      "project_id": {
+        "type": "string",
+        "description": "The project ID that was scheduled for monitoring"
+      }
+    },
+    "required": ["success", "message"]
+  }
+}

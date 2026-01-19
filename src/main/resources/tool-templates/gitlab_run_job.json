@@ -1,0 +1,48 @@
+{
+  "name": "gitlab_run_job",
+  "description": "Run/play a manual or retryable job in GitLab. Use this tool to trigger manual jobs or retry failed jobs. The job must be in a playable state (manual, failed, or canceled).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "description": "The GitLab project ID or URL-encoded path (e.g., 'mygroup/myproject' or '12345'). Required to identify the project."
+      },
+      "job_id": {
+        "type": "number",
+        "description": "The job ID to run/play. You can get this from gitlab_get_pipeline_jobs tool."
+      }
+    },
+    "required": ["project_id", "job_id"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "number",
+        "description": "The job ID that was triggered"
+      },
+      "name": {
+        "type": "string",
+        "description": "The job name"
+      },
+      "status": {
+        "type": "string",
+        "description": "The updated job status after triggering (typically 'pending' or 'running')"
+      },
+      "stage": {
+        "type": "string",
+        "description": "The pipeline stage this job belongs to"
+      },
+      "started_at": {
+        "type": "string",
+        "description": "Job start timestamp"
+      },
+      "web_url": {
+        "type": "string",
+        "description": "URL to view the job in GitLab"
+      }
+    },
+    "required": ["id", "name", "status"]
+  }
+}

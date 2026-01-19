@@ -1,0 +1,27 @@
+{
+  "name": "stop_deployment_scheduling",
+  "description": "Stop all active QA deployment schedulers. This tool cancels all background tasks that are monitoring GitLab pipelines for automated QA deployments. Use this when you need to halt all automated deployment monitoring.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean",
+        "description": "Whether the operation was successful"
+      },
+      "message": {
+        "type": "string",
+        "description": "A message describing the result of stopping schedulers"
+      },
+      "stopped_count": {
+        "type": "integer",
+        "description": "The number of schedulers that were stopped"
+      }
+    },
+    "required": ["success", "message", "stopped_count"]
+  }
+}

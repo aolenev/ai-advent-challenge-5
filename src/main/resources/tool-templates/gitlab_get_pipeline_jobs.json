@@ -1,0 +1,58 @@
+{
+  "name": "gitlab_get_pipeline_jobs",
+  "description": "Get all jobs for a specific pipeline in a GitLab project. Returns job id, name, and status for each job. Use this tool to see all jobs within a pipeline and their current states.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "description": "The GitLab project ID or URL-encoded path (e.g., 'mygroup/myproject' or '12345'). Required to identify the project."
+      },
+      "pipeline_id": {
+        "type": "number",
+        "description": "The pipeline ID to get jobs for. You can get this from gitlab_get_latest_pipeline tool."
+      }
+    },
+    "required": ["project_id", "pipeline_id"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "jobs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number",
+              "description": "The job ID"
+            },
+            "name": {
+              "type": "string",
+              "description": "The job name"
+            },
+            "status": {
+              "type": "string",
+              "description": "The current job status (e.g., 'success', 'failed', 'running', 'pending', 'manual')"
+            },
+            "stage": {
+              "type": "string",
+              "description": "The pipeline stage this job belongs to"
+            },
+            "created_at": {
+              "type": "string",
+              "description": "Job creation timestamp"
+            }
+          },
+          "required": ["id", "name", "status"]
+        },
+        "description": "List of jobs in the pipeline"
+      },
+      "total_count": {
+        "type": "number",
+        "description": "Total number of jobs in the pipeline"
+      }
+    },
+    "required": ["jobs", "total_count"]
+  }
+}

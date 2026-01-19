@@ -1,0 +1,44 @@
+{
+  "name": "gitlab_get_latest_pipeline",
+  "description": "Get the latest pipeline for a GitLab project. Returns pipeline id, project_id, and name. Use this tool to check the most recent CI/CD pipeline execution.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project_id": {
+        "type": "string",
+        "description": "The GitLab project ID or URL-encoded path (e.g., 'mygroup/myproject' or '12345'). Required to identify which project's pipeline to retrieve."
+      }
+    },
+    "required": ["project_id"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "number",
+        "description": "The pipeline ID"
+      },
+      "project_id": {
+        "type": "number",
+        "description": "The project ID this pipeline belongs to"
+      },
+      "name": {
+        "type": "string",
+        "description": "The pipeline name"
+      },
+      "status": {
+        "type": "string",
+        "description": "The current status of the pipeline (e.g., 'success', 'failed', 'running')"
+      },
+      "ref": {
+        "type": "string",
+        "description": "The branch or tag name the pipeline ran on"
+      },
+      "created_at": {
+        "type": "string",
+        "description": "Pipeline creation timestamp"
+      }
+    },
+    "required": ["id", "project_id"]
+  }
+}
