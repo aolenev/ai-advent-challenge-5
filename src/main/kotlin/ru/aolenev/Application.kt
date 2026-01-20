@@ -85,13 +85,27 @@ private fun Routing.routes() {
     }
 
     post("/tooled-conversation") { req: ChatPrompt ->
-        val response = claude.tooledChat(
-            chatId = req.chatId,
-            aiRoleOpt = req.systemPrompt,
-            userPrompt = req.prompt,
-            withRag = req.withRag,
-            minSimilarity = req.minSimilarity
-        )
+        val response = when (req.modelType.lowercase()) {
+            "local" -> ollamaService.tooledChat(
+                chatId = req.chatId,
+                aiRoleOpt = req.systemPrompt,
+                userPrompt = req.prompt,
+                withRag = req.withRag,
+                minSimilarity = req.minSimilarity,
+                model = req.model ?: "qwen2.5:3b"
+            )
+            "cloud" -> claude.tooledChat(
+                chatId = req.chatId,
+                aiRoleOpt = req.systemPrompt,
+                userPrompt = req.prompt,
+                withRag = req.withRag,
+                minSimilarity = req.minSimilarity
+            )
+            else -> {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Unknown modelType: ${req.modelType}. Use 'cloud' or 'local'"))
+                return@post
+            }
+        }
 
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))

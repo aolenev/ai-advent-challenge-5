@@ -308,8 +308,9 @@ class ClaudeService : GptService {
             val databaseTools = localDatabaseMcpServer.listTools().result.tools ?: emptyList()
             val shellTools = localShellMcpServer.listTools().result.tools ?: emptyList()
             val gitlabTools = gitlabMcpService.getTools()
+            val githubTools = gitHubMcpService.getTools()
             val cronJobTools = cronJobService.getTools()
-            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + cronJobTools).map { it.toClaude() }
+            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools).map { it.toClaude() }
 
             var response = requestClaude(
                 req = ClaudeRawRequest(
@@ -399,6 +400,15 @@ class ClaudeService : GptService {
                     )
                 "schedule_qa_deployment", "stop_deployment_scheduling" ->
                     cronJobService.callTool(tooledContent.name, arguments) ?: McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = mapOf("error" to "CronJob tool returned null"),
+                            isError = true
+                        )
+                    )
+                "github_list_bug_issues", "github_list_issues", "github_create_issue", "github_update_issue" ->
+                    gitHubMcpService.callTool(tooledContent.name, arguments, owner = "aolenev", repo = "ai-advent-challenge-5") ?: McpToolsResponse(
                         jsonrpc = "2.0",
                         id = 2,
                         result = McpToolsResult(

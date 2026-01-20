@@ -48,7 +48,9 @@ data class ChatPrompt(
     val prompt: String,
     val systemPrompt: String?,
     val withRag: Boolean = false,
-    val minSimilarity: BigDecimal = BigDecimal(0.7)
+    val minSimilarity: BigDecimal = BigDecimal(0.7),
+    val model: String? = null,
+    val modelType: String = "cloud"
 )
 
 data class HelpRequest(
