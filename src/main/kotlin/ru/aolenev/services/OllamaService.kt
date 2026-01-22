@@ -27,111 +27,6 @@ import ru.aolenev.repo.RagEmbeddingsTable
 import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
 
-data class OllamaCompletionRequest(
-    @JsonProperty("model") val model: String,
-    @JsonProperty("prompt") val prompt: String,
-    @JsonProperty("max_tokens") val maxTokens: Int = 1000,
-    @JsonProperty("temperature") val temperature: Double = 0.7
-)
-
-data class OllamaCompletionChoice(
-    @JsonProperty("text") val text: String,
-    @JsonProperty("index") val index: Int,
-    @JsonProperty("logprobs") val logprobs: Any? = null,
-    @JsonProperty("finish_reason") val finishReason: String
-)
-
-data class OllamaCompletionUsage(
-    @JsonProperty("prompt_tokens") val promptTokens: Int,
-    @JsonProperty("completion_tokens") val completionTokens: Int,
-    @JsonProperty("total_tokens") val totalTokens: Int
-)
-
-data class OllamaCompletionResponse(
-    @JsonProperty("id") val id: String,
-    @JsonProperty("object") val objectType: String,
-    @JsonProperty("created") val created: Long,
-    @JsonProperty("model") val model: String,
-    @JsonProperty("choices") val choices: List<OllamaCompletionChoice>,
-    @JsonProperty("usage") val usage: OllamaCompletionUsage
-)
-
-// Chat API models for tool support
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaChatRequest(
-    @JsonProperty("model") val model: String,
-    @JsonProperty("messages") val messages: List<OllamaChatMessage>,
-    @JsonProperty("tools") val tools: List<OllamaTool>? = null,
-    @JsonProperty("max_tokens") val maxTokens: Int = 2048,
-    @JsonProperty("temperature") val temperature: Double = 0.7
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaChatMessage(
-    @JsonProperty("role") val role: String,
-    @JsonProperty("content") val content: String? = null,
-    @JsonProperty("tool_calls") val toolCalls: List<OllamaToolCall>? = null,
-    @JsonProperty("tool_call_id") val toolCallId: String? = null
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaTool(
-    @JsonProperty("type") val type: String = "function",
-    @JsonProperty("function") val function: OllamaToolFunction
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaToolFunction(
-    @JsonProperty("name") val name: String,
-    @JsonProperty("description") val description: String?,
-    @JsonProperty("parameters") val parameters: Any?
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaToolCall(
-    @JsonProperty("id") val id: String,
-    @JsonProperty("type") val type: String = "function",
-    @JsonProperty("function") val function: OllamaToolCallFunction
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaToolCallFunction(
-    @JsonProperty("name") val name: String,
-    @JsonProperty("arguments") val arguments: String
-)
-
-data class OllamaChatResponse(
-    @JsonProperty("id") val id: String,
-    @JsonProperty("object") val objectType: String,
-    @JsonProperty("created") val created: Long,
-    @JsonProperty("model") val model: String,
-    @JsonProperty("choices") val choices: List<OllamaChatChoice>,
-    @JsonProperty("usage") val usage: OllamaCompletionUsage
-)
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-data class OllamaChatChoice(
-    @JsonProperty("index") val index: Int,
-    @JsonProperty("message") val message: OllamaChatMessage,
-    @JsonProperty("finish_reason") val finishReason: String?
-)
-
-fun McpTool.toOllama(): OllamaTool = OllamaTool(
-    type = "function",
-    function = OllamaToolFunction(
-        name = name,
-        description = description,
-        parameters = inputSchema
-    )
-)
-
-data class OllamaChat(
-    val id: String,
-    val aiRole: String,
-    val messages: List<OllamaChatMessage>,
-    val isFinished: Boolean
-)
-
 class OllamaService {
     private val httpClient: HttpClient by context.instance()
     private val config: Config by context.instance()
@@ -466,10 +361,116 @@ class OllamaService {
             setBody(request)
         }.body()
     }
+
+    private fun McpTool.toOllama(): OllamaTool = OllamaTool(
+        type = "function",
+        function = OllamaToolFunction(
+            name = name,
+            description = description,
+            parameters = inputSchema
+        )
+    )
+
+    private fun MessageType.toOllamaRole(): String = when (this) {
+        MessageType.USER -> "user"
+        MessageType.ASSISTANT -> "assistant"
+        MessageType.SUMMARY -> "user"
+    }
 }
 
-private fun MessageType.toOllamaRole(): String = when (this) {
-    MessageType.USER -> "user"
-    MessageType.ASSISTANT -> "assistant"
-    MessageType.SUMMARY -> "user"
-}
+data class OllamaChat(
+    val id: String,
+    val aiRole: String,
+    val messages: List<OllamaChatMessage>,
+    val isFinished: Boolean
+)
+
+
+data class OllamaCompletionRequest(
+    @JsonProperty("model") val model: String,
+    @JsonProperty("prompt") val prompt: String,
+    @JsonProperty("max_tokens") val maxTokens: Int = 1000,
+    @JsonProperty("temperature") val temperature: Double = 0.7
+)
+
+data class OllamaCompletionChoice(
+    @JsonProperty("text") val text: String,
+    @JsonProperty("index") val index: Int,
+    @JsonProperty("logprobs") val logprobs: Any? = null,
+    @JsonProperty("finish_reason") val finishReason: String
+)
+
+data class OllamaCompletionUsage(
+    @JsonProperty("prompt_tokens") val promptTokens: Int,
+    @JsonProperty("completion_tokens") val completionTokens: Int,
+    @JsonProperty("total_tokens") val totalTokens: Int
+)
+
+data class OllamaCompletionResponse(
+    @JsonProperty("id") val id: String,
+    @JsonProperty("object") val objectType: String,
+    @JsonProperty("created") val created: Long,
+    @JsonProperty("model") val model: String,
+    @JsonProperty("choices") val choices: List<OllamaCompletionChoice>,
+    @JsonProperty("usage") val usage: OllamaCompletionUsage
+)
+
+// Chat API models for tool support
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaChatRequest(
+    @JsonProperty("model") val model: String,
+    @JsonProperty("messages") val messages: List<OllamaChatMessage>,
+    @JsonProperty("tools") val tools: List<OllamaTool>? = null,
+    @JsonProperty("max_tokens") val maxTokens: Int = 2048,
+    @JsonProperty("temperature") val temperature: Double = 0.7
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaChatMessage(
+    @JsonProperty("role") val role: String,
+    @JsonProperty("content") val content: String? = null,
+    @JsonProperty("tool_calls") val toolCalls: List<OllamaToolCall>? = null,
+    @JsonProperty("tool_call_id") val toolCallId: String? = null
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaTool(
+    @JsonProperty("type") val type: String = "function",
+    @JsonProperty("function") val function: OllamaToolFunction
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaToolFunction(
+    @JsonProperty("name") val name: String,
+    @JsonProperty("description") val description: String?,
+    @JsonProperty("parameters") val parameters: Any?
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaToolCall(
+    @JsonProperty("id") val id: String,
+    @JsonProperty("type") val type: String = "function",
+    @JsonProperty("function") val function: OllamaToolCallFunction
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaToolCallFunction(
+    @JsonProperty("name") val name: String,
+    @JsonProperty("arguments") val arguments: String
+)
+
+data class OllamaChatResponse(
+    @JsonProperty("id") val id: String,
+    @JsonProperty("object") val objectType: String,
+    @JsonProperty("created") val created: Long,
+    @JsonProperty("model") val model: String,
+    @JsonProperty("choices") val choices: List<OllamaChatChoice>,
+    @JsonProperty("usage") val usage: OllamaCompletionUsage
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class OllamaChatChoice(
+    @JsonProperty("index") val index: Int,
+    @JsonProperty("message") val message: OllamaChatMessage,
+    @JsonProperty("finish_reason") val finishReason: String?
+)
