@@ -273,7 +273,7 @@ class ClaudeService : GptService {
         }
     }
 
-    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?, withRag: Boolean, minSimilarity: BigDecimal): ResponseWithHistory? {
+    suspend fun tooledChat(chatId: String, userPrompt: String, aiRoleOpt: String?, withRag: Boolean, minSimilarity: BigDecimal, temperature: BigDecimal? = null): ResponseWithHistory? {
         val aiRole = aiRoleOpt ?: "Use tools if needed"
         try {
             val richPrompt = if (withRag) enrichPromptWithRagContext(userPrompt, minSimilarity) else userPrompt
@@ -317,12 +317,13 @@ class ClaudeService : GptService {
                     model = sonnet45,
                     messages = currentChat.messages,
                     system = currentChat.aiRole,
-                    tools = allTools
+                    tools = allTools,
+                    temperature = temperature
                 )
             ).body<ClaudeResponse>()
 
             while (response.stopReason == "tool_use") {
-                response = handleToolUse(chatId, response, allTools)
+                response = handleToolUse(chatId, response, allTools, temperature)
             }
             // Deserialize to ClaudeTextContent
             @Suppress("UNCHECKED_CAST")
@@ -354,7 +355,7 @@ class ClaudeService : GptService {
         }
     }
 
-    private suspend fun handleToolUse(chatId: String, response: ClaudeResponse, allTools: List<ClaudeMcpTool>): ClaudeResponse {
+    private suspend fun handleToolUse(chatId: String, response: ClaudeResponse, allTools: List<ClaudeMcpTool>, temperature: BigDecimal? = null): ClaudeResponse {
         val currentChat = chatCache.get(chatId)
         // Convert response.content to list of ClaudeTooledContent
         @Suppress("UNCHECKED_CAST")
@@ -449,7 +450,8 @@ class ClaudeService : GptService {
                         model = sonnet45,
                         messages = updatedChat.messages,
                         system = updatedChat.aiRole,
-                        tools = allTools
+                        tools = allTools,
+                        temperature = temperature
                     )
                 ).body<ClaudeResponse>()
 

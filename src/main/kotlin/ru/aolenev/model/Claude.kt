@@ -50,7 +50,8 @@ data class ChatPrompt(
     val withRag: Boolean = false,
     val minSimilarity: BigDecimal = BigDecimal(0.7),
     val model: String? = null,
-    val modelType: String = "cloud"
+    val modelType: String = "cloud",
+    val temperature: BigDecimal? = null
 )
 
 data class HelpRequest(

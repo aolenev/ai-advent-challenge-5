@@ -92,14 +92,16 @@ private fun Routing.routes() {
                 userPrompt = req.prompt,
                 withRag = req.withRag,
                 minSimilarity = req.minSimilarity,
-                model = req.model ?: "qwen2.5:3b"
+                model = req.model ?: "qwen2.5:3b",
+                temperature = req.temperature?.toDouble()
             )
             "cloud" -> claude.tooledChat(
                 chatId = req.chatId,
                 aiRoleOpt = req.systemPrompt,
                 userPrompt = req.prompt,
                 withRag = req.withRag,
-                minSimilarity = req.minSimilarity
+                minSimilarity = req.minSimilarity,
+                temperature = req.temperature
             )
             else -> {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Unknown modelType: ${req.modelType}. Use 'cloud' or 'local'"))

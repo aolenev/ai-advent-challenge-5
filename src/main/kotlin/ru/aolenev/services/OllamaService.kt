@@ -77,7 +77,8 @@ class OllamaService {
         aiRoleOpt: String?,
         withRag: Boolean,
         minSimilarity: BigDecimal,
-        model: String = "qwen2.5:3b"
+        model: String = "qwen2.5:3b",
+        temperature: Double? = null
     ): ResponseWithHistory? {
         val aiRole = aiRoleOpt ?: "Use tools if needed"
         try {
@@ -118,13 +119,14 @@ class OllamaService {
                 request = OllamaChatRequest(
                     model = model,
                     messages = currentChat.messages,
-                    tools = allTools
+                    tools = allTools,
+                    temperature = temperature ?: 0.7
                 )
             )
 
             var updatedChat = currentChat
             while (response.choices.firstOrNull()?.finishReason == "tool_calls") {
-                val result = handleToolUse(chatId, response, allTools, model, updatedChat)
+                val result = handleToolUse(chatId, response, allTools, model, updatedChat, temperature)
                 response = result.response
                 updatedChat = result.chat
             }
@@ -215,7 +217,8 @@ class OllamaService {
         response: OllamaChatResponse,
         allTools: List<OllamaTool>,
         model: String,
-        currentChat: OllamaChat
+        currentChat: OllamaChat,
+        temperature: Double? = null
     ): ToolUseResult {
         val assistantMessage = response.choices.firstOrNull()?.message
         val toolCalls = assistantMessage?.toolCalls
@@ -312,7 +315,8 @@ class OllamaService {
             request = OllamaChatRequest(
                 model = model,
                 messages = updatedChat.messages,
-                tools = allTools
+                tools = allTools,
+                temperature = temperature ?: 0.7
             )
         )
 
