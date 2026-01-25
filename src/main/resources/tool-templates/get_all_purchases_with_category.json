@@ -1,0 +1,9 @@
+{
+  "name": "get_all_purchases_with_category",
+  "description": "Get all purchases from database that have both object_info and category set. Returns list of purchases with id, purchase_info, and category fields.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

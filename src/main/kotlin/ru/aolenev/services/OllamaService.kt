@@ -38,6 +38,7 @@ class OllamaService {
     private val gitlabMcpService: GitlabMcpService by context.instance()
     private val gitHubMcpService: GitHubMcpService by context.instance()
     private val cronJobService: CronJobService by context.instance()
+    private val purchaseMcpServer: PurchaseMcpServer by context.instance()
 
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
 
@@ -113,7 +114,9 @@ class OllamaService {
             val gitlabTools = gitlabMcpService.getTools()
             val githubTools = gitHubMcpService.getTools()
             val cronJobTools = cronJobService.getTools()
-            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools).map { it.toOllama() }
+            val purchaseTools = purchaseMcpServer.listTools().result.tools ?: emptyList()
+//            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools + purchaseTools).map { it.toOllama() }
+            val allTools = purchaseTools.map { it.toOllama() }
 
             var response = requestOllamaChat(
                 request = OllamaChatRequest(
@@ -273,6 +276,9 @@ class OllamaService {
                             isError = true
                         )
                     )
+                "get_all_purchases_with_empty_category", "update_purchase_category", "get_all_purchases_with_category" -> purchaseMcpServer.callTool(
+                    McpToolsParams(name = toolName, arguments = arguments)
+                )
                 else -> {
                     log.error("Unknown tool: $toolName")
                     McpToolsResponse(

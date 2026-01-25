@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew build:*)",
-      "Bash(./gradlew compileKotlin:*)"
+      "Bash(./gradlew compileKotlin:*)",
+      "WebFetch(domain:swagger.gosplan.info)",
+      "WebFetch(domain:v2test.gosplan.info)"
     ]
   }
 }

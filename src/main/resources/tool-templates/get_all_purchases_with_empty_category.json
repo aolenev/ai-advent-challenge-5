@@ -1,0 +1,9 @@
+{
+  "name": "get_all_purchases_with_empty_category",
+  "description": "Get all purchases from database that have object_info. Returns list of purchases with id and purchase_info fields.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

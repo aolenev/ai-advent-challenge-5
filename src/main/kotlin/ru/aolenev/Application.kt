@@ -26,6 +26,7 @@ private val turboMcpServer: TurboMcpServer by context.instance()
 private val cronJobService: CronJobService by context.instance()
 private val ollamaRagService: OllamaRagService by context.instance()
 private val ollamaService: OllamaService by context.instance()
+private val purchaseService: PurchaseService by context.instance()
 
 fun main(args: Array<String>) {
     embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
@@ -167,5 +168,14 @@ private fun Routing.routes() {
         if (response != null) {
             call.respond(HttpStatusCode.OK, mapOf("result" to response))
         } else call.respond(HttpStatusCode.ServiceUnavailable, mapOf("result" to "Cannot send prompt to local Ollama"))
+    }
+
+    post("/loadPurchases") {
+        try {
+            val count = purchaseService.loadPurchases()
+            call.respond(HttpStatusCode.OK, mapOf("result" to "Loaded $count purchases"))
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Failed to load purchases")))
+        }
     }
 }

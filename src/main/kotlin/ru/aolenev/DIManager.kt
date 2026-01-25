@@ -35,6 +35,8 @@ import ru.aolenev.services.CommonMcpService
 import ru.aolenev.services.OpenAIService
 import ru.aolenev.services.TurboApiService
 import ru.aolenev.services.YandexGptService
+import ru.aolenev.services.PurchaseService
+import ru.aolenev.services.PurchaseMcpServer
 import javax.sql.DataSource
 
 val baseModule = DI.Module("base") {
@@ -104,6 +106,8 @@ val serviceModule = DI.Module("service") {
     bind<CronJobService>() with singleton { CronJobService() }
     bind<OllamaRagService>() with singleton { OllamaRagService() }
     bind<OllamaService>() with singleton { OllamaService() }
+    bind<PurchaseService>() with singleton { PurchaseService() }
+    bind<PurchaseMcpServer>() with singleton { PurchaseMcpServer() }
 }
 
 val context =

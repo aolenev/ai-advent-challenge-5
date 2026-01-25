@@ -1,0 +1,18 @@
+{
+  "name": "update_purchase_category",
+  "description": "Update the category field of a purchase in the database",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "number",
+        "description": "The ID of the purchase to update"
+      },
+      "category": {
+        "type": "string",
+        "description": "The new category value to set"
+      }
+    },
+    "required": ["id", "category"]
+  }
+}
