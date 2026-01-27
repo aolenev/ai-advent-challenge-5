@@ -1,0 +1,14 @@
+{
+  "name": "remove_note",
+  "description": "Removes a note about Alexey by its ID. Use this tool when a note is no longer relevant or needs to be deleted.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "number",
+        "description": "The ID of the note to remove"
+      }
+    },
+    "required": ["id"]
+  }
+}

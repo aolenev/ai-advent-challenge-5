@@ -39,6 +39,7 @@ class OllamaService {
     private val gitHubMcpService: GitHubMcpService by context.instance()
     private val cronJobService: CronJobService by context.instance()
     private val purchaseMcpServer: PurchaseMcpServer by context.instance()
+    private val personalizationMcpServer: PersonalizationMcpServer by context.instance()
 
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
 
@@ -115,8 +116,9 @@ class OllamaService {
             val githubTools = gitHubMcpService.getTools()
             val cronJobTools = cronJobService.getTools()
             val purchaseTools = purchaseMcpServer.listTools().result.tools ?: emptyList()
-//            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools + purchaseTools).map { it.toOllama() }
-            val allTools = purchaseTools.map { it.toOllama() }
+            val personalizationTools = personalizationMcpServer.listTools().result.tools ?: emptyList()
+//            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools + purchaseTools + personalizationTools).map { it.toOllama() }
+            val allTools = (purchaseTools + personalizationTools).map { it.toOllama() }
 
             var response = requestOllamaChat(
                 request = OllamaChatRequest(
@@ -277,6 +279,9 @@ class OllamaService {
                         )
                     )
                 "get_all_purchases_with_empty_category", "update_purchase_category", "get_all_purchases_with_category" -> purchaseMcpServer.callTool(
+                    McpToolsParams(name = toolName, arguments = arguments)
+                )
+                "add_note", "remove_note", "list_notes" -> personalizationMcpServer.callTool(
                     McpToolsParams(name = toolName, arguments = arguments)
                 )
                 else -> {

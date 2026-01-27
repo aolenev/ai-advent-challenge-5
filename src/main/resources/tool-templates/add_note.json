@@ -1,0 +1,14 @@
+{
+  "name": "add_note",
+  "description": "Adds a note about Alexey. Use this tool to store any information about Alexey that should be remembered for future conversations.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "note": {
+        "type": "string",
+        "description": "Free form text note about Alexey"
+      }
+    },
+    "required": ["note"]
+  }
+}

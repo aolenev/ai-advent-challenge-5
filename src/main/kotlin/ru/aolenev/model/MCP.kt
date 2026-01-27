@@ -238,3 +238,34 @@ data class StopDeploymentSchedulingToolOutput(
     @JsonProperty("message") val message: String,
     @JsonProperty("stopped_count") val stoppedCount: Int
 )
+
+// Personalization MCP Tool Models
+
+data class AddNoteToolInput(
+    @JsonProperty("note") val note: String
+)
+
+data class AddNoteToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("id") val id: Long,
+    @JsonProperty("message") val message: String
+)
+
+data class RemoveNoteToolInput(
+    @JsonProperty("id") val id: Long
+)
+
+data class RemoveNoteToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("message") val message: String
+)
+
+data class NoteInfo(
+    @JsonProperty("id") val id: Long,
+    @JsonProperty("note") val note: String
+)
+
+data class ListNotesToolOutput(
+    @JsonProperty("notes") val notes: List<NoteInfo>,
+    @JsonProperty("total_count") val totalCount: Int
+)
