@@ -269,3 +269,20 @@ data class ListNotesToolOutput(
     @JsonProperty("notes") val notes: List<NoteInfo>,
     @JsonProperty("total_count") val totalCount: Int
 )
+
+// Speech to Text MCP Tool Models
+
+data class SpeechToTextToolInput(
+    @JsonProperty("fileName") val fileName: String
+)
+
+data class SpeechToTextToolOutput(
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("text") val text: String,
+    @JsonProperty("srt_file_path") val srtFilePath: String
+)
+
+data class ListAudioFilesToolOutput(
+    @JsonProperty("files") val files: List<String>,
+    @JsonProperty("total_count") val totalCount: Int
+)

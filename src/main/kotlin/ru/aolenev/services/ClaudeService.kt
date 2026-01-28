@@ -35,6 +35,7 @@ class ClaudeService : GptService {
     private val gitHubMcpService: GitHubMcpService by context.instance()
     private val gitlabMcpService: GitlabMcpService by context.instance()
     private val cronJobService: CronJobService by context.instance()
+    private val speechToTextMcpServer: SpeechToTextMcpServer by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -310,7 +311,8 @@ class ClaudeService : GptService {
             val gitlabTools = gitlabMcpService.getTools()
             val githubTools = gitHubMcpService.getTools()
             val cronJobTools = cronJobService.getTools()
-            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools).map { it.toClaude() }
+            val speechToTextTools = speechToTextMcpServer.listTools().result.tools ?: emptyList()
+            val allTools = speechToTextTools.map { it.toClaude() }
 
             var response = requestClaude(
                 req = ClaudeRawRequest(
@@ -417,6 +419,9 @@ class ClaudeService : GptService {
                             isError = true
                         )
                     )
+                "speech_to_text", "list_audio_files" -> speechToTextMcpServer.callTool(
+                    McpToolsParams(name = tooledContent.name, arguments = arguments)
+                )
                 else -> {
                     log.error("Unknown tool: ${tooledContent.name}")
                     McpToolsResponse(

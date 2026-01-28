@@ -38,6 +38,7 @@ import ru.aolenev.services.YandexGptService
 import ru.aolenev.services.PurchaseService
 import ru.aolenev.services.PurchaseMcpServer
 import ru.aolenev.services.PersonalizationMcpServer
+import ru.aolenev.services.SpeechToTextMcpServer
 import javax.sql.DataSource
 
 val baseModule = DI.Module("base") {
@@ -110,6 +111,7 @@ val serviceModule = DI.Module("service") {
     bind<PurchaseService>() with singleton { PurchaseService() }
     bind<PurchaseMcpServer>() with singleton { PurchaseMcpServer() }
     bind<PersonalizationMcpServer>() with singleton { PersonalizationMcpServer() }
+    bind<SpeechToTextMcpServer>() with singleton { SpeechToTextMcpServer() }
 }
 
 val context =

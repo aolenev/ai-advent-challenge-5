@@ -1,0 +1,9 @@
+{
+  "name": "list_audio_files",
+  "description": "Lists all available audio files (.wav) in the resources directory that can be transcribed using speech_to_text tool.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

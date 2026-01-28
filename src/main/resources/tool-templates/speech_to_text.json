@@ -1,0 +1,14 @@
+{
+  "name": "speech_to_text",
+  "description": "Transforms audio file to text. Takes an audio file name and returns the transcribed text",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "fileName": {
+        "type": "string",
+        "description": "Name of the audio file (without .wav extension) located in resources directory"
+      }
+    },
+    "required": ["fileName"]
+  }
+}

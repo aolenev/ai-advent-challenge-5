@@ -40,6 +40,7 @@ class OllamaService {
     private val cronJobService: CronJobService by context.instance()
     private val purchaseMcpServer: PurchaseMcpServer by context.instance()
     private val personalizationMcpServer: PersonalizationMcpServer by context.instance()
+    private val speechToTextMcpServer: SpeechToTextMcpServer by context.instance()
 
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
 
@@ -117,8 +118,9 @@ class OllamaService {
             val cronJobTools = cronJobService.getTools()
             val purchaseTools = purchaseMcpServer.listTools().result.tools ?: emptyList()
             val personalizationTools = personalizationMcpServer.listTools().result.tools ?: emptyList()
-//            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools + purchaseTools + personalizationTools).map { it.toOllama() }
-            val allTools = (purchaseTools + personalizationTools).map { it.toOllama() }
+            val speechToTextTools = speechToTextMcpServer.listTools().result.tools ?: emptyList()
+//            val allTools = (turboTools + databaseTools + shellTools + gitlabTools + githubTools + cronJobTools + purchaseTools + personalizationTools + speechToTextTools).map { it.toOllama() }
+            val allTools = speechToTextTools.map { it.toOllama() }
 
             var response = requestOllamaChat(
                 request = OllamaChatRequest(
@@ -284,6 +286,9 @@ class OllamaService {
                 "add_note", "remove_note", "list_notes" -> personalizationMcpServer.callTool(
                     McpToolsParams(name = toolName, arguments = arguments)
                 )
+                "speech_to_text", "list_audio_files" -> speechToTextMcpServer.callTool(
+                    McpToolsParams(name = toolName, arguments = arguments)
+                )
                 else -> {
                     log.error("Unknown tool: $toolName")
                     McpToolsResponse(
@@ -314,7 +319,7 @@ class OllamaService {
         val newMessages = currentChat.messages +
                 OllamaChatMessage(
                     role = "assistant",
-                    toolCalls = assistantMessage?.toolCalls
+                    toolCalls = assistantMessage.toolCalls
                 ) +
                 toolResultMessages
 
