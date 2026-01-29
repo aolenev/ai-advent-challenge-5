@@ -280,7 +280,7 @@ class OllamaService {
                             isError = true
                         )
                     )
-                "get_all_purchases_with_empty_category", "update_purchase_category", "get_all_purchases_with_category" -> purchaseMcpServer.callTool(
+                "get_all_purchases_with_empty_category", "update_purchase_category", "get_all_purchases_with_category", "load_purchases" -> purchaseMcpServer.callTool(
                     McpToolsParams(name = toolName, arguments = arguments)
                 )
                 "add_note", "remove_note", "list_notes" -> personalizationMcpServer.callTool(

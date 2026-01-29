@@ -36,6 +36,7 @@ class ClaudeService : GptService {
     private val gitlabMcpService: GitlabMcpService by context.instance()
     private val cronJobService: CronJobService by context.instance()
     private val speechToTextMcpServer: SpeechToTextMcpServer by context.instance()
+    private val purchaseMcpServer: PurchaseMcpServer by context.instance()
 
     private val sonnet45 = "claude-sonnet-4-5-20250929"
     private val singlePromptStructResponseTool = this::class.java
@@ -312,7 +313,8 @@ class ClaudeService : GptService {
             val githubTools = gitHubMcpService.getTools()
             val cronJobTools = cronJobService.getTools()
             val speechToTextTools = speechToTextMcpServer.listTools().result.tools ?: emptyList()
-            val allTools = speechToTextTools.map { it.toClaude() }
+            val purchaseTools = purchaseMcpServer.listTools().result.tools ?: emptyList()
+            val allTools = (purchaseTools + githubTools).map { it.toClaude() }
 
             var response = requestClaude(
                 req = ClaudeRawRequest(
@@ -420,6 +422,9 @@ class ClaudeService : GptService {
                         )
                     )
                 "speech_to_text", "list_audio_files" -> speechToTextMcpServer.callTool(
+                    McpToolsParams(name = tooledContent.name, arguments = arguments)
+                )
+                "get_all_purchases_with_empty_category", "update_purchase_category", "get_all_purchases_with_category", "load_purchases" -> purchaseMcpServer.callTool(
                     McpToolsParams(name = tooledContent.name, arguments = arguments)
                 )
                 else -> {

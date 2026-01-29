@@ -40,9 +40,15 @@ data class UpdateCategoryOutput(
     @JsonProperty("message") val message: String
 )
 
+data class LoadPurchasesOutput(
+    @JsonProperty("count") val count: Int,
+    @JsonProperty("message") val message: String
+)
+
 class PurchaseMcpServer {
     private val log by lazy { LoggerFactory.getLogger(this.javaClass.name) }
     private val mapper: ObjectMapper by context.instance()
+    private val purchaseService: PurchaseService by context.instance()
 
     fun listTools(): McpToolsResponse {
         return try {
@@ -63,12 +69,17 @@ class PurchaseMcpServer {
                 .readText()
             val getAllWithCategoryTool = mapper.readValue(getAllWithCategoryJson, McpTool::class.java)
 
-            log.info("Successfully loaded tools: ${getAllPurchasesTool.name}, ${updateCategoryTool.name}, ${getAllWithCategoryTool.name}")
+            val loadPurchasesJson = this::class.java
+                .getResource("/tool-templates/load_purchases.json")!!
+                .readText()
+            val loadPurchasesTool = mapper.readValue(loadPurchasesJson, McpTool::class.java)
+
+            log.info("Successfully loaded tools: ${getAllPurchasesTool.name}, ${updateCategoryTool.name}, ${getAllWithCategoryTool.name}, ${loadPurchasesTool.name}")
 
             McpToolsResponse(
                 jsonrpc = "2.0",
                 id = 2,
-                result = McpToolsResult(tools = listOf(getAllPurchasesTool, updateCategoryTool, getAllWithCategoryTool), isError = false)
+                result = McpToolsResult(tools = listOf(getAllPurchasesTool, updateCategoryTool, getAllWithCategoryTool, loadPurchasesTool), isError = false)
             )
         } catch (e: Exception) {
             log.error("Error loading tools", e)
@@ -76,7 +87,7 @@ class PurchaseMcpServer {
         }
     }
 
-    fun callTool(params: McpToolsParams): McpToolsResponse {
+    suspend fun callTool(params: McpToolsParams): McpToolsResponse {
         return try {
             when (params.name) {
                 "get_all_purchases_with_empty_category" -> {
@@ -141,6 +152,26 @@ class PurchaseMcpServer {
                     )
 
                     log.info("Found ${purchases.size} purchases with category")
+
+                    McpToolsResponse(
+                        jsonrpc = "2.0",
+                        id = 2,
+                        result = McpToolsResult(
+                            content = output,
+                            isError = false
+                        )
+                    )
+                }
+                "load_purchases" -> {
+                    log.info("Calling load_purchases tool")
+
+                    val count = purchaseService.loadPurchases()
+                    val output = LoadPurchasesOutput(
+                        count = count,
+                        message = "Successfully loaded $count purchases"
+                    )
+
+                    log.info("Loaded $count purchases")
 
                     McpToolsResponse(
                         jsonrpc = "2.0",

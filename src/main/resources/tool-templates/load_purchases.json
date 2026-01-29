@@ -1,0 +1,9 @@
+{
+  "name": "load_purchases",
+  "description": "Load purchases from external API and store them in the database. Returns the number of purchases loaded.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

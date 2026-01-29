@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import kotlinx.datetime.LocalDateTime
 import java.math.BigDecimal
+import java.util.*
 
 data class SinglePrompt(
     val prompt: String,
@@ -44,7 +45,7 @@ data class TokenUsage(
 )
 
 data class ChatPrompt(
-    val chatId: String,
+    val chatId: String = UUID.randomUUID().toString(),
     val prompt: String,
     val systemPrompt: String?,
     val withRag: Boolean = false,

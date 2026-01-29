@@ -26,7 +26,7 @@ class PurchaseService {
 
     suspend fun loadPurchases(): Int {
         return try {
-            val purchases = httpClient.get("$baseUrl/purchases?limit=21")
+            val purchases = httpClient.get("$baseUrl/purchases?limit=1")
                 .body<List<PurchaseResponse>>()
                 .filter { it.objectInfo != null }
 
